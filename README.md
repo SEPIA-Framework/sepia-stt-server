@@ -25,6 +25,7 @@ wget -qO - http://goofy.zamia.org/repo-ai/debian/stretch/amd64/bofh.asc | sudo a
 apt-get update
 apt-get install python-kaldiasr
 ```
+Download one (or more) of their great ASR models too! I recommend 'kaldi-generic-en-tdnn_sp'.
 
 ### Install STT server and run
 ```bash
@@ -34,15 +35,14 @@ python sepia_stt_server.py
 ```
 You can check if the server is reachable by calling `http://localhost:20741/ping`
 
-### How to set-up the SEPIA client (this will be easier soon ^^)
+### How to set-up the SEPIA client
 Make sure you can reach your STT server via a secure HTTPS connection. If you don't have your own secure web-server you can use [Ngrok](https://ngrok.com/docs) for testing:  
 ```bash
 ./ngrok http 20741
 ```
-Then open your SEPIA web-client in Firefox browser (Chrome works too, but is currently set to use Google ASR). 
-If you don't run your own version you can use the [official public client](https://sepia-framework.github.io/app/index.html).
-Open the browser console and enter:  
-`SepiaFW.speechWebSocket.setSocketURI("wss://[MY-NGROK-ADDRESS].nkrok.io/socket")`  
+Then open your SEPIA web-client (v0.12.1+). If you don't run your own version you can use the [official public client](https://sepia-framework.github.io/app/index.html).
+Go to the menu and look for 'ASR engine' and 'ASR server' (page 2). If your browser supports the 'MediaDevices' interface you will be able to select 'Custom (WebSocket)' here.
+Finally set your 'ASR server', e.g.: `wss://[MY-NGROK-ADDRESS].nkrok.io/socket`.  
 Test the speech recognition via the microphone button :-)
 
 ## Configuration
