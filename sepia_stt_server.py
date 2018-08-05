@@ -64,6 +64,11 @@ CONFIG_PATHS = [
     os.path.expanduser("~") + "/share/sepia_stt_server/app.conf",
 ]
 
+def run_os_cmd(cmd, work_dir):
+    cmd = '/bin/bash -c "pushd %s && bash %s && popd"' % (work_dir, cmd)
+    info (cmd)
+    os.system (cmd)
+
 class BufferedPipe(object):
     def __init__(self, max_frames):
         """
@@ -171,11 +176,17 @@ class ControlsHandler(tornado.web.RequestHandler):
 
     def post(self):
         content_type = self.request.headers['Content-Type']
+        token = ""
+        kaldi_model = ""
+        adapt_de = ""
+        adapt_en = ""
         if content_type == "application/json":
             try:
                 data = tornado.escape.json_decode(self.request.body)
-                token = data["token"]
-                kaldi_model = data["kaldi_model"]
+                if "token" in data: token = data["token"]
+                if "kaldi_model" in data: kaldi_model = data["kaldi_model"]
+                if "adapt_de" in data: adapt_de = data["adapt_de"]
+                if "adapt_en" in data: adapt_en = data["adapt_en"]
             except:
                 self.write({
                     'error': True, 
@@ -185,6 +196,8 @@ class ControlsHandler(tornado.web.RequestHandler):
         else:
             token = self.get_argument('token', '')
             kaldi_model = self.get_argument('kaldi_model', '')
+            adapt_de = self.get_argument('adapt_de', '')
+            adapt_en = self.get_argument('adapt_en', '')
         if not token:
             self.write({
                 'error': True, 
@@ -199,12 +212,7 @@ class ControlsHandler(tornado.web.RequestHandler):
                 })
                 return
             else:
-                if not kaldi_model:
-                    self.write({
-                        'success': True, 
-                        'msg': 'All good, but nothing changed.'
-                    })
-                else:
+                if kaldi_model:
                     #Set new default decoder
                     old_model = get_decoder("").model_dir
                     try:
@@ -220,6 +228,31 @@ class ControlsHandler(tornado.web.RequestHandler):
                             'error': True, 
                             'msg': 'Cannot set this Kaldi model! Please check the path again.'
                         })
+
+                elif adapt_de:
+                    cmd = "adapt_build_move_de.sh %s" % adapt_de
+                    run_os_cmd(cmd, "/app/lm_adapt")
+                    self.write({
+                        'success': True, 
+                        'msg': 'Executed cmd, plz check console for errors.',
+                        "cmd": "/app/lm_adapt/adapt_build_move_de.sh %s" % adapt_de
+                    })
+
+                elif adapt_en:
+                    cmd = "adapt_build_move_en.sh %s" % adapt_en
+                    run_os_cmd(cmd, "/app/lm_adapt")
+                    self.write({
+                        'success': True, 
+                        'msg': 'Executed cmd, plz check console for errors.',
+                        "cmd": "/app/lm_adapt/adapt_build_move_en.sh %s" % adapt_en
+                    })
+                    
+                else:
+                    self.write({
+                        'success': True, 
+                        'msg': 'All good, but nothing changed.'
+                    })
+                    
                 return
 
 class WSHandler(tornado.websocket.WebSocketHandler):
