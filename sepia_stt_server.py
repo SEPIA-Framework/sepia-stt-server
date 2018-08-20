@@ -31,7 +31,8 @@ import numpy as np
 #from time           import time
 from kaldiasr.nnet3 import KaldiNNet3OnlineModel, KaldiNNet3OnlineDecoder
 
-SERVER_VERSION = "0.8.0"
+SERVER_VERSION = "0.8.1"
+ADAPT_WORK_DIR = "lm_adapt/"
 
 CLIP_MIN_MS = 200  # 200ms - the minimum audio clip that will be used
 MAX_LENGTH = 8000  # Max length of a sound clip for processing in ms
@@ -60,7 +61,7 @@ def set_default_decoder(decoder):
 # This should be least-specific -> most-specific:
 CONFIG_PATHS = [
     "./app.conf",
-    "/app/share/sepia_stt_server/app.conf",
+    "/apps/share/sepia_stt_server/app.conf",
     os.path.expanduser("~") + "/share/sepia_stt_server/app.conf",
 ]
 
@@ -230,21 +231,21 @@ class ControlsHandler(tornado.web.RequestHandler):
                         })
 
                 elif adapt_de:
-                    cmd = "adapt_build_move_de.sh %s" % adapt_de
-                    run_os_cmd(cmd, "/app/lm_adapt")
+                    cmd = "adapt_build_move_clean.sh de %s" % adapt_de
+                    run_os_cmd(cmd, ADAPT_WORK_DIR)
                     self.write({
                         'success': True, 
                         'msg': 'Executed cmd, plz check console for errors.',
-                        "cmd": "/app/lm_adapt/adapt_build_move_de.sh %s" % adapt_de
+                        "cmd": "%s %s" % (ADAPT_WORK_DIR, cmd)
                     })
 
                 elif adapt_en:
-                    cmd = "adapt_build_move_en.sh %s" % adapt_en
-                    run_os_cmd(cmd, "/app/lm_adapt")
+                    cmd = "adapt_build_move_clean.sh en %s" % adapt_en
+                    run_os_cmd(cmd, ADAPT_WORK_DIR)
                     self.write({
                         'success': True, 
                         'msg': 'Executed cmd, plz check console for errors.',
-                        "cmd": "/app/lm_adapt/adapt_build_move_en.sh %s" % adapt_en
+                        "cmd": "%s %s" % (ADAPT_WORK_DIR, cmd)
                     })
                     
                 else:
