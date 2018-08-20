@@ -1,6 +1,6 @@
 # SEPIA Speech-To-Text Server
   
-[UNDER CONSTRUCTION]  
+[BETA - UNDER CONSTRUCTION]  
   
 This server supports streaming audio over a WebSocket connection with integration of an open-source ASR decoder like the Kaldi speech recognition toolkit. It can handle full-duplex messaging during the decoding process for intermediate results. The REST interface of the server allows to switch the ASR model on-the-fly.
 
@@ -48,7 +48,7 @@ Test the speech recognition via the microphone button :-)
 ## Configuration
 The application reads its configuration on start-up from the app.conf file that can be located in several different locations (checked in this order):  
 * Home folder of the user: `~/share/sepia_stt_server/app.conf`  
-* App folder: `/app/share/sepia_stt_server/app.conf`  
+* App folder: `/apps/share/sepia_stt_server/app.conf`  
 * Base folder of the server app: `./app.conf`  
   
 The most important settings are:  

@@ -8,7 +8,8 @@ RUN apt-get update && apt-get install -y \
         python2.7 python3 python-pip \
         gcc g++ gnupg \
 		build-essential libboost-all-dev cmake zlib1g-dev libbz2-dev liblzma-dev \
-		swig libpulse-dev libasound2-dev
+		swig libpulse-dev libasound2-dev \
+		nginx
 
 RUN apt-get clean && apt-get autoclean && apt-get autoremove -y
 
@@ -18,7 +19,13 @@ RUN mkdir /apps && cd /apps && \
 	echo "deb http://goofy.zamia.org/repo-ai/debian/stretch/amd64/ ./" >/etc/apt/sources.list.d/zamia-ai.list && \
 	wget -qO - http://goofy.zamia.org/repo-ai/debian/stretch/amd64/bofh.asc | apt-key add - && \
 	apt-get update && \
-	apt-get install kaldi-chain-zamia-speech-de kaldi-chain-zamia-speech-en python-kaldiasr python-nltools pulseaudio-utils pulseaudio
+	apt-get install -y python-kaldiasr python-nltools pulseaudio-utils pulseaudio
+
+RUN mkdir /apps/tmp && cd /apps/tmp && \
+	wget http://goofy.zamia.org/zamia-speech/asr-models/kaldi-generic-en-tdnn_sp-r20180815.tar.xz && \
+	tar -xf kaldi-generic-en-tdnn_sp-r20180815.tar.xz && \
+	mkdir /opt/kaldi/model && \
+	mv kaldi-generic-en-tdnn_sp-r20180815 /opt/kaldi/model/kaldi-generic-en-tdnn_sp
 
 ### KenLM ###
 
@@ -52,6 +59,12 @@ RUN cd /apps && rm -r openfst
 RUN pip install tornado webrtcvad numpy
 RUN cd /apps && \
 	git clone https://github.com/SEPIA-Framework/sepia-stt-server.git
+RUN ln -sf /apps/sepia-stt-server/nginx_config/stt /etc/nginx/sites-enabled/stt
 	
 ### Working folders ###
-RUN mkdir /apps/share && mkdir /apps/share/kaldi_models && mkdir /apps/share/lm_corpus
+RUN mkdir /apps/share && mkdir /apps/share/kaldi_models && mkdir /apps/share/lm_corpus && \
+	rm -r /apps/tmp
+
+### Start ###
+WORKDIR /apps
+CMD service nginx start && python /apps/sepia-stt-server/sepia_stt_server.py
