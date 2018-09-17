@@ -20,7 +20,7 @@ Once the image has finished downloading (~1GB, extracted ~3.3GB) you can run it 
 ```bash
 docker run --rm --name=sepia_stt -d -p 9000:8080 sepia/stt-server:beta1
 ```
-This will start the STT server (with internal proxy running on port 8080 with path '/stt') and expose it on port 9000 (choose whatever you need here).  
+This will start the STT server (with internal proxy running on port 8080 with path '/stt') and expose it to port 9000 (choose whatever you need here).  
 To test if the server is working you can call the settings interface with:  
 ```bash
 curl http://localhost:9000/stt/settings && echo
@@ -32,11 +32,12 @@ docker stop sepia_stt
 ```
 To change the server settings, add your own ASR models, do language model customization or to capture your recordings for later you can use the internal 'share' folder like this:  
 ```bash
-wget https://github.com/SEPIA-Framework/sepia-stt-server/blob/master/share-folder.zip
+wget -O share-folder.zip https://github.com/SEPIA-Framework/sepia-stt-server/blob/master/share-folder.zip?raw=true
 unzip share-folder.zip -d /home/[my user]/sepia-stt-share/
 docker run --rm --name=sepia_stt -d -p 9000:8080 -v /home/[my user]/sepia-stt-share:/apps/share sepia/stt-server:beta1
 ```
-where `/home/[my user]/sepia-stt-share` is just an example for any folder you would like to use. When setup like this the server will load it's configuration from the app.conf in your shared folder.
+where `/home/[my user]/sepia-stt-share` is just an example for any folder you would like to use (e.g. in Windows it could be C:/sepia/stt-share). 
+When setup like this the server will load it's configuration from the app.conf in your shared folder.
 
 ## Custom installation (tested on Debian9 64bit)
 
