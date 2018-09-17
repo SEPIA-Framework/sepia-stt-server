@@ -76,13 +76,16 @@ The most important settings are:
 * kaldi_model_path: This is where the ASR models for Kaldi are stored, default is "/opt/kaldi/model/kaldi-generic-en-tdnn_sp" as used by Zamia Speech  
 
 ## How to set-up the SEPIA client
-Make sure you can reach your STT server via a secure HTTPS connection. If you don't have your own secure web-server you can use [Ngrok](https://ngrok.com/docs) for testing:  
+Make sure you can reach your STT server via a secure HTTPS connection. If you don't have your own secure web-server you can use [Ngrok](https://ngrok.com/docs) for testing, e.g.:  
 ```bash
 ./ngrok http 20741
 ```
+Choose the right port depending on your app.conf and your Docker run command (in case you are using the Docker image). 
 Then open your SEPIA web-client (v0.12.1+). If you don't run your own version you can use the [official public client](https://sepia-framework.github.io/app/index.html).
 Go to the menu and look for 'ASR engine' and 'ASR server' (page 2). If your browser supports the 'MediaDevices' interface you will be able to select 'Custom (WebSocket)' here.
-Finally set your 'ASR server', e.g.: `wss://[MY-NGROK-ADDRESS].nkrok.io/socket`.  
+Finally set your 'ASR server', e.g.:  
+`wss://[MY-NGROK-ADDRESS].nkrok.io/socket` (if you run the server directly using Ngrok) or  
+`wss://[MY-NGROK-ADDRESS].nkrok.io/stt/socket` (if you're using the Docker image).  
 Test the speech recognition via the microphone button :-)
 
 ## REST Interface
@@ -92,7 +95,7 @@ Get the current configuration via HTTP GET to:
 ```
 curl -X GET http://localhost:20471/settings
 ```
-(Note: Replace localhost by your server or the Ngrok address)  
+(Note: Replace localhost by your server or localhost:port with the Ngrok address. When you are using the Docker image your server is using a proxy; add: '/stt/settings' to the path like in the client setup).  
   
 Set a different Kaldi model via HTTP POST, e.g.:  
 ```
