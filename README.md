@@ -33,8 +33,7 @@ docker stop sepia_stt
 To change the server settings, add your own ASR models, do language model customization or to capture your recordings for later you can use the internal 'share' folder like this:  
 ```bash
 wget https://github.com/SEPIA-Framework/sepia-stt-server/blob/master/share-folder.zip
-tar -xf share-folder.zip -C /home/[my user]/sepia-stt-share/
-rm share-folder.zip #optional
+unzip share-folder.zip -d /home/[my user]/sepia-stt-share/
 docker run --rm --name=sepia_stt -d -p 9000:8080 -v /home/[my user]/sepia-stt-share:/apps/share sepia/stt-server:beta1
 ```
 where `/home/[my user]/sepia-stt-share` is just an example for any folder you would like to use. When setup like this the server will load it's configuration from the app.conf in your shared folder.
