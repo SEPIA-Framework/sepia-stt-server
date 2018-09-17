@@ -10,9 +10,38 @@ This server supports streaming audio over a WebSocket connection with integratio
 * Integration of [Zamia Speech](https://github.com/gooofy/zamia-speech) (python-kaldiasr) to use Kalid ASR in Python
 * Roughly based on [nexmo-community/audiosocket_framework](https://github.com/nexmo-community/audiosocket_framework)
 
-## Quick-start (tested on Debian9 64bit)
+## Using the Docker image
 
-### Install requirements
+Make sure you have Docker installed then pull the image via the command-line:  
+```bash
+docker pull sepia/stt-server:beta1 
+```
+Once the image has finished downloading (~1GB, extracted ~3.3GB) you can run it using:  
+```bash
+docker run --rm --name=sepia_stt -d -p 9000:8080 sepia/stt-server:beta1
+```
+This will start the STT server (with internal proxy running on port 8080 with path '/stt') and expose it on port 9000 (choose whatever you need here).  
+To test if the server is working you can call the settings interface with:  
+```bash
+curl http://localhost:9000/stt/settings && echo
+```
+You should see a JSON response indicating the ASR model and server version.  
+To stop the server use:  
+```bash
+docker stop sepia_stt
+```
+To change the server settings, add your own ASR models, do language model customization or to capture your recordings for later you can use the internal 'share' folder like this:  
+```bash
+wget https://github.com/SEPIA-Framework/sepia-stt-server/blob/master/share-folder.zip
+tar -xf share-folder.zip -C /home/[my user]/sepia-stt-share/
+rm share-folder.zip #optional
+docker run --rm --name=sepia_stt -d -p 9000:8080 -v /home/[my user]/sepia-stt-share:/apps/share sepia/stt-server:beta1
+```
+where `/home/[my user]/sepia-stt-share` is just an example for any folder you would like to use. When setup like this the server will load it's configuration from the app.conf in your shared folder.
+
+## Custom installation (tested on Debian9 64bit)
+
+### Requirements
 Make sure you have at least Python 2.7 with pip (e.g.: sudo apt-get install python-pip) installed. You may also need header files for Python and OpenSSL depending on your operating system.
 If you are good to go install a few dependencies via pip:  
 ```bash
@@ -35,17 +64,7 @@ python sepia_stt_server.py
 ```
 You can check if the server is reachable by calling `http://localhost:20741/ping`
 
-### How to set-up the SEPIA client
-Make sure you can reach your STT server via a secure HTTPS connection. If you don't have your own secure web-server you can use [Ngrok](https://ngrok.com/docs) for testing:  
-```bash
-./ngrok http 20741
-```
-Then open your SEPIA web-client (v0.12.1+). If you don't run your own version you can use the [official public client](https://sepia-framework.github.io/app/index.html).
-Go to the menu and look for 'ASR engine' and 'ASR server' (page 2). If your browser supports the 'MediaDevices' interface you will be able to select 'Custom (WebSocket)' here.
-Finally set your 'ASR server', e.g.: `wss://[MY-NGROK-ADDRESS].nkrok.io/socket`.  
-Test the speech recognition via the microphone button :-)
-
-## Configuration
+### Configuration
 The application reads its configuration on start-up from the app.conf file that can be located in several different locations (checked in this order):  
 * Home folder of the user: `~/share/sepia_stt_server/app.conf`  
 * App folder: `/apps/share/sepia_stt_server/app.conf`  
@@ -56,7 +75,17 @@ The most important settings are:
 * recordings_path: This is where the framework application will store audio files it records, default is "./recordings/"  
 * kaldi_model_path: This is where the ASR models for Kaldi are stored, default is "/opt/kaldi/model/kaldi-generic-en-tdnn_sp" as used by Zamia Speech  
 
-### REST Interface
+## How to set-up the SEPIA client
+Make sure you can reach your STT server via a secure HTTPS connection. If you don't have your own secure web-server you can use [Ngrok](https://ngrok.com/docs) for testing:  
+```bash
+./ngrok http 20741
+```
+Then open your SEPIA web-client (v0.12.1+). If you don't run your own version you can use the [official public client](https://sepia-framework.github.io/app/index.html).
+Go to the menu and look for 'ASR engine' and 'ASR server' (page 2). If your browser supports the 'MediaDevices' interface you will be able to select 'Custom (WebSocket)' here.
+Finally set your 'ASR server', e.g.: `wss://[MY-NGROK-ADDRESS].nkrok.io/socket`.  
+Test the speech recognition via the microphone button :-)
+
+## REST Interface
 The configuration can be changed while the server is running.  
   
 Get the current configuration via HTTP GET to:  
