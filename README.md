@@ -14,11 +14,11 @@ This server supports streaming audio over a WebSocket connection with integratio
 
 Make sure you have Docker installed then pull the image via the command-line:  
 ```bash
-docker pull sepia/stt-server:beta1 
+docker pull sepia/stt-server:beta2.1 
 ```
-Once the image has finished downloading (~1GB, extracted ~3.3GB) you can run it using:  
+Once the image has finished downloading (~700MB, extracted ~2GB) you can run it using:  
 ```bash
-docker run --rm --name=sepia_stt -d -p 9000:8080 sepia/stt-server:beta1
+docker run --rm --name=sepia_stt -d -p 9000:8080 sepia/stt-server:beta2.1 
 ```
 This will start the STT server (with internal proxy running on port 8080 with path '/stt') and expose it to port 9000 (choose whatever you need here).  
 To test if the server is working you can call the settings interface with:  
@@ -34,7 +34,7 @@ To change the server settings, add your own ASR models, do language model custom
 ```bash
 wget -O share-folder.zip https://github.com/SEPIA-Framework/sepia-stt-server/blob/master/share-folder.zip?raw=true
 unzip share-folder.zip -d /home/[my user]/sepia-stt-share/
-docker run --rm --name=sepia_stt -d -p 9000:8080 -v /home/[my user]/sepia-stt-share:/apps/share sepia/stt-server:beta1
+docker run --rm --name=sepia_stt -d -p 9000:8080 -v /home/[my user]/sepia-stt-share:/apps/share sepia/stt-server:beta2.1
 ```
 where `/home/[my user]/sepia-stt-share` is just an example for any folder you would like to use (e.g. in Windows it could be C:/sepia/stt-share). 
 When setup like this the server will load it's configuration from the app.conf in your shared folder.

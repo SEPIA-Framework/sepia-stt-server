@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
         gcc g++ gnupg \
         build-essential libboost-all-dev cmake zlib1g-dev libbz2-dev liblzma-dev \
         swig libpulse-dev libasound2-dev \
+		libatlas-base-dev \
         nginx && \
 #
 #   Pips for STT Server
@@ -31,10 +32,10 @@ RUN cd /apps && \
 #
 #   Download model
     mkdir /apps/tmp && cd /apps/tmp && \
-    wget http://goofy.zamia.org/zamia-speech/asr-models/kaldi-generic-en-tdnn_sp-r20180815.tar.xz && \
-    tar -xf kaldi-generic-en-tdnn_sp-r20180815.tar.xz && \
+    wget http://goofy.zamia.org/zamia-speech/asr-models/kaldi-generic-en-tdnn_f-r20190227.tar.xz && \
+    tar -xf kaldi-generic-en-tdnn_f-r20190227.tar.xz && \
     mkdir /opt/kaldi/model && \
-    mv kaldi-generic-en-tdnn_sp-r20180815 /opt/kaldi/model/kaldi-generic-en-tdnn_sp && \
+    mv kaldi-generic-en-tdnn_f-r20190227 /opt/kaldi/model/kaldi-generic-en-tdnn_f && \
     rm -r /apps/tmp
 
 # KenLM
