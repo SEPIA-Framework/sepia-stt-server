@@ -38,6 +38,8 @@ docker run --rm --name=sepia_stt -d -p 9000:8080 -v /home/[my user]/sepia-stt-sh
 ```
 where `/home/[my user]/sepia-stt-share` is just an example for any folder you would like to use (e.g. in Windows it could be C:/sepia/stt-share). 
 When setup like this the server will load it's configuration from the app.conf in your shared folder.
+  
+For SEPIA app/client configuration see below.
 
 ## Custom installation (tested on Debian9 64bit)
 
@@ -76,17 +78,21 @@ The most important settings are:
 * kaldi_model_path: This is where the ASR models for Kaldi are stored, default is "/opt/kaldi/model/kaldi-generic-en-tdnn_sp" as used by Zamia Speech  
 
 ## How to set-up the SEPIA client
-Make sure you can reach your STT server via a secure HTTPS connection. If you don't have your own secure web-server you can use [Ngrok](https://ngrok.com/docs) for testing, e.g.:  
+Open your client (e.g. [official public client](https://sepia-framework.github.io/app/index.html)), go to settings and look for 'ASR server' (page 2). If you are using the Docker image (see above) your entry should look something like this:
+* ws://127.0.0.1:9000/stt/socket (when running Docker on same machine and used the example command to start the image)
+* wss://secure.example.com/stt/socket (when using a secure server and proxy)
+
+After you've set the correct server check the 'ASR engine' selector. If your browser supports the 'MediaDevices' interface you will be able to select 'Custom (WebSocket)' here.
+  
+Some browsers might require a secure HTTPS connection. If you don't have your [own secure web-server](https://github.com/SEPIA-Framework/sepia-docs/wiki/SSL-for-your-Server) you can use tools like [Ngrok](https://ngrok.com/docs) for testing, e.g.:  
 ```bash
-./ngrok http 20741
+./ngrok http 9000
 ```
-Choose the right port depending on your app.conf and your Docker run command (in case you are using the Docker image). 
-Then open your SEPIA web-client (v0.12.1+). If you don't run your own version you can use the [official public client](https://sepia-framework.github.io/app/index.html).
-Go to the menu and look for 'ASR engine' and 'ASR server' (page 2). If your browser supports the 'MediaDevices' interface you will be able to select 'Custom (WebSocket)' here.
-Finally set your 'ASR server', e.g.:  
-`wss://[MY-NGROK-ADDRESS].nkrok.io/socket` (if you run the server directly using Ngrok) or  
+Choose the right port depending on your app.conf and your Docker run command (in case you are using the Docker image) and then set your 'ASR server' like this:  
+`wss://[MY-NGROK-ADDRESS].nkrok.io/socket` (if you run the server directly) or  
 `wss://[MY-NGROK-ADDRESS].nkrok.io/stt/socket` (if you're using the Docker image).  
-Test the speech recognition via the microphone button :-)
+  
+Finally test the speech recognition in your client via the microphone button :-)
 
 ## REST Interface
 The configuration can be changed while the server is running.  
