@@ -99,13 +99,13 @@ The configuration can be changed while the server is running.
   
 Get the current configuration via HTTP GET to (custom server):  
 ```
-curl -X GET http://localhost:20471/settings
+curl -X GET http://localhost:20741/settings
 ```
 Note: Replace localhost by your server or localhost:port with the web-server/proxy/Ngrok address. When you are using the Docker image your server is using a proxy! Add: '/stt/settings' to the path like in the client setup.  
   
 Set a different Kaldi model via HTTP POST, e.g.:  
 ```
-curl -X POST http://localhost:20471/settings \
+curl -X POST http://localhost:20741/settings \
   -H 'Content-Type: application/json' \
   -d '{"token":"test", "kaldi_model":"/home/user/share/kaldi_models/my-own-model"}'
 ```
