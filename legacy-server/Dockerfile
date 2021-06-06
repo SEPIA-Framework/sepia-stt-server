@@ -70,7 +70,7 @@ ENV LD_LIBRARY_PATH="/usr/local/lib:${LD_LIBRARY_PATH}"
 RUN cd /apps && \
 	mkdir tmp && cd tmp && \
     git clone https://github.com/SEPIA-Framework/sepia-stt-server.git && \
-	cd .. && mv tmp/sepia-stt-server/server-v1 sepia-stt-server && \
+	cd .. && mv tmp/sepia-stt-server/legacy-server sepia-stt-server && \
     rm -r tmp && \
     ln -sf /apps/sepia-stt-server/nginx_config/stt /etc/nginx/sites-enabled/stt
 
