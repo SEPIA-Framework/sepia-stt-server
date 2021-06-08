@@ -8,13 +8,17 @@ import uvicorn
 
 from settings import SettingsFile
 
+# Server constants
+SERVER_NAME = "SEPIA STT Server V2 BETA"
+SERVER_VERSION = "0.0.2"
+
 # Run arguments
 argv=sys.argv[1:]
 ap = argparse.ArgumentParser()
 ap.add_argument("-s", "--settings", action="store", help="Settings path", default=None)
 ap.add_argument("-p", "--port", action="store", help="Server port", default=None)
 ap.add_argument("-c", "--code", action="store_true", help="Automatic reload of code changes")
-ap.add_argument("-m", "--model", action="store", help="Path of ASR model", default=None)
+ap.add_argument("-m", "--model", action="store", help="Path of single ASR model", default=None)
 ap.add_argument("-r", "--recordings", action="store", help="Folder for recordings", default=None)
 args = ap.parse_args(argv)
 
@@ -24,7 +28,7 @@ settings.code_reload = args.code    # this is only accessible via command line
 if args.port is not None:
     settings.port = int(args.port)
 if args.model is not None:
-    settings.asr_model_path = args.model
+    settings.asr_model_paths = [args.model]
 if args.recordings is not None:
     settings.recordings_path = args.recordings
 

@@ -3,7 +3,8 @@
 import time
 from fastapi import WebSocket
 
-# For now we just use a simple static token. TODO: Replace with user list
+# For now we just use a simple static token.
+# TODO: Replace with user list
 COMMON_TOKEN = "test123"
 
 class SessionIds:
@@ -12,6 +13,7 @@ class SessionIds:
 
     @staticmethod
     def get_new_sesstion_id():
+        """Generate new session ID"""
         SessionIds.last_session_id += 1
         if SessionIds.last_session_id > 9999:
             SessionIds.last_session_id = 1
@@ -24,7 +26,7 @@ class SocketUser:
         self.socket = websocket
         self.session_id = SessionIds.get_new_sesstion_id()
 
-    def authenticate(self, client_id, token):
+    async def authenticate(self, client_id, token):
         """Check if user is valid"""
         if client_id is not None and token == COMMON_TOKEN:
             self.is_authenticated = True

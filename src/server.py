@@ -5,13 +5,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 
-from launch import settings
+from launch import settings, SERVER_NAME, SERVER_VERSION
 from http_api import HttpApiEndpoint, SettingsRequest
 from socket_api import WebsocketApiEndpoint
-
-# Server constants
-SERVER_NAME = "SEPIA STT Server V2 BETA"
-SERVER_VERSION = "0.0.2"
 
 # App
 app = FastAPI()

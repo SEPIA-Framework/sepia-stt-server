@@ -1,6 +1,7 @@
 """Server settings loader and handling"""
 
-import os, sys
+import os
+import sys
 import configparser
 
 # ordered from low prio to high prio
@@ -40,7 +41,12 @@ class SettingsFile:
             self.cors_origins = settings.get("server", "cors_origins").split(",")
             self.log_level = settings.get("server", "log_level")
             self.recordings_path = settings.get("app", "recordings_path")
-            self.asr_model_path = settings.get("app", "asr_model_path")
+            self.asr_engine = settings.get("app", "asr_engine")
+            self.asr_model_paths = []
+            for key, path in settings.items("asr_models"):
+                if key.startswith("path"):
+                    self.asr_model_paths.append(path)
+                
         except configparser.Error as err:
             print("Settings error:", err, file=sys.stderr)
             sys.exit(1)
