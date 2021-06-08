@@ -20,6 +20,7 @@ custom_settings = os.getenv("SEPIA_STT_SETTINGS")
 
 #Load settings
 settings = SettingsFile(custom_settings)
+print(f"Settings tag: '{settings.settings_tag}'")   # TODO: how to properly use Fast API logger???
 
 # App
 app = FastAPI()

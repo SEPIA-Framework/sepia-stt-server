@@ -28,6 +28,7 @@ class SettingsFile:
 
         # Validate config:
         try:
+            self.settings_tag = settings.get("info", "settings_tag")
             self.recordings_path = settings.get("app", "recordings_path")
             self.asr_model_path = settings.get("app", "asr_model_path")
         except configparser.Error as err:

@@ -169,9 +169,10 @@
 			//--- WebSocket ---
 			
 			var protocol = (location.protocol == "https:")? "wss://" : "ws://";
-			//var socketHost = protocol + location.host;
-			var socketHost = "ws://localhost:20741";
+			var socketHost = protocol + location.host;
 			var ws;
+
+			var msgId = 0;
 			
 			function openConnection(){
 				ws = new WebSocket(socketHost);
@@ -198,11 +199,14 @@
             			
 			function sendMessage(){
 				var input = document.getElementById("messageText");
+				var clientId = document.getElementById("clientId");
+				var accessToken = document.getElementById("accessToken");
 				if (ws) ws.send(JSON.stringify({
 					"type": "chat",
-					"data": input.value,
-					"client_id": "",
-					"access_token": ""
+					"data": {"text": input.value},
+					"client_id": clientId.value,
+					"access_token": accessToken,
+					"msg_id": ++msgId
 				}));
 				input.value = '';
 			}
