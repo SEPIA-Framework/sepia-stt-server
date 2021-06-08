@@ -1,26 +1,17 @@
 """Fast-API Module for SEPIA STT Server"""
 
-import os
-
 from fastapi import FastAPI, Response, WebSocket, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 
-from settings import SettingsFile
+from launch import settings
 from http_api import HttpApiEndpoint, SettingsRequest
 from socket_api import WebsocketApiEndpoint
 
 # Server constants
 SERVER_NAME = "SEPIA STT Server V2 BETA"
-SERVER_VERSION = "0.0.1"
-
-# Run arguments (via ENV)
-custom_settings = os.getenv("SEPIA_STT_SETTINGS")
-
-#Load settings
-settings = SettingsFile(custom_settings)
-print(f"Settings tag: '{settings.settings_tag}'")   # TODO: how to properly use Fast API logger???
+SERVER_VERSION = "0.0.2"
 
 # App
 app = FastAPI()
@@ -29,7 +20,7 @@ app.mount("/www", StaticFiles(directory="www"))
 # CORS setup
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[settings.cors_origins],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

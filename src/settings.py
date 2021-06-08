@@ -1,7 +1,6 @@
 """Server settings loader and handling"""
 
-import sys
-import os
+import os, sys
 import configparser
 
 # ordered from low prio to high prio
@@ -13,12 +12,16 @@ SETTINGS_PATHS = [
 class SettingsFile:
     """File handler for server settings (e.g. server.conf)"""
     def __init__(self, file_path):
+        env_settings_path = os.getenv("SEPIA_STT_SETTINGS")
+        if env_settings_path is not None:
+            settings_paths = SETTINGS_PATHS + [env_settings_path]
         settings_paths = list(SETTINGS_PATHS)
         if file_path is not None:
             settings_paths = SETTINGS_PATHS + [file_path]
 
         settings = configparser.ConfigParser()
-        if not settings.read(settings_paths):
+        settings_read = settings.read(settings_paths)
+        if not settings_read:
             print(
                 "No settings file found at the following locations: "
                 + "".join('\n    {}'.format(sp) for sp in settings_paths),
@@ -26,9 +29,16 @@ class SettingsFile:
             )
             sys.exit(1)
 
+        # We assume the last file always overwrites all settings
+        self.active_settings_file = settings_read[-1]
+
         # Validate config:
         try:
             self.settings_tag = settings.get("info", "settings_tag")
+            self.host = settings.get("server", "host")
+            self.port = int(settings.get("server", "port"))
+            self.cors_origins = settings.get("server", "cors_origins").split(",")
+            self.log_level = settings.get("server", "log_level")
             self.recordings_path = settings.get("app", "recordings_path")
             self.asr_model_path = settings.get("app", "asr_model_path")
         except configparser.Error as err:
