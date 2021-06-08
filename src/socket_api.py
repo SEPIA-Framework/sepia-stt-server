@@ -1,17 +1,20 @@
 """Module to handle WebSocket connections and messages"""
 
+from typing import Optional
+
 from fastapi import WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 from pydantic import BaseModel, ValidationError
 
 from authentication import SocketUser
+from launch import settings, SERVER_VERSION
 
 class SocketJsonMessage(BaseModel):
-    """Socket message in JSON format"""
-    type: str
+    """Incoming socket message in JSON format"""
+    type: str   # for example: "welcome"
     data: dict
-    access_token: str
-    client_id: str
+    access_token: Optional[str] = None
+    client_id: Optional[str] = None
     msg_id: int
     #{"type": "welcome", "data": { "language": "en-US", "model": "...", "grammar": "..." }, "access_token": "", "client_id": "", "ts": 1620804751062, "msg_id": 1 }
 
@@ -59,12 +62,12 @@ class SocketManager:
 class WebsocketApiEndpoint:
     """Class to handles WebSocket API requests"""
     def __init__(self):
-        self.socket_manager = SocketManager()
-
+        WebsocketApiEndpoint.socket_manager = SocketManager()
+        
     async def handle(self, websocket: WebSocket):
         """Handle WebSocket events"""
         user = SocketUser(websocket)
-        await self.socket_manager.onopen(user)
+        await WebsocketApiEndpoint.socket_manager.onopen(user)
         try:
             while websocket.client_state == WebSocketState.CONNECTED:
                 #if websocket.application_state == WebSocketState.DISCONNECTED
@@ -84,26 +87,49 @@ class WebsocketApiEndpoint:
                     else:
                         await send_message(SocketErrorMessage(401,
                             "Unauthorized", "Binary data can only be sent after authentication."), user)
-
             # regular disconnect
-            await self.socket_manager.onclose(user)
-
+            await WebsocketApiEndpoint.socket_manager.onclose(user)
         except WebSocketDisconnect:
             # acceptable disconnect
-            await self.socket_manager.onclose(user)
+            await WebsocketApiEndpoint.socket_manager.onclose(user)
         except RuntimeError:
             # broken disconnect
-            await self.socket_manager.onclose(user)
+            await WebsocketApiEndpoint.socket_manager.onclose(user)
 
 # Message handlers:
 
 async def on_json_message(socket_message: SocketJsonMessage, user: SocketUser):
     """Handle messages in JSON format"""
 
-    # TODO: handle welcome event
-
-    await send_message(SocketBroadcastMessage(
-        "chat", {"text": (f"You wrote: {socket_message.data}")}), user)
+    # handle welcome event
+    if socket_message.type == "welcome":
+        await user.authenticate(socket_message.client_id, socket_message.access_token)
+        if user.is_authenticated:
+            welcome_message = SocketMessage("welcome")
+            welcome_message.json["info"] = {
+                "version": SERVER_VERSION,
+                "engine": settings.asr_engine,
+                "models": settings.asr_model_paths,
+                "more": "tbd"
+                # add e.g.: languages, engine, models, features...
+            }
+            welcome_message.json["msg_id"] = socket_message.msg_id
+            await send_message(welcome_message, user)
+        else:
+            await send_message(SocketErrorMessage(401,
+                "Unauthorized", "Authentication failed."), user)
+            await user.socket.close()
+            #WebsocketApiEndpoint.socket_manager.onclose(user) # TODO: use?
+    
+    # handle any authenticated request
+    elif user.is_authenticated:
+        await send_message(SocketBroadcastMessage(
+            "chat", {"text": (f"You wrote: {socket_message.data}")}), user)
+    
+    # refuse everything else
+    else:
+        await send_message(SocketErrorMessage(401,
+            "Unauthorized", "In current state only 'welcome' message is allowed."), user)
 
 async def on_binary_message(binary_data: bytes, user: SocketUser):
     """Handle binary data"""

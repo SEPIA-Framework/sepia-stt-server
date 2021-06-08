@@ -178,7 +178,8 @@
 				ws = new WebSocket(socketHost);
 				
 				ws.onopen = function(){
-					addMessage("Connection OPEN");
+					addMessage("Connection OPEN, sending welcome...");
+					sendWelcome();
 				}
 				
 				ws.onclose = function(){
@@ -198,11 +199,18 @@
 			}
             			
 			function sendMessage(text){
-				var clientId = document.getElementById("clientId");
-				var accessToken = document.getElementById("accessToken");
 				if (ws) ws.send(JSON.stringify({
 					"type": "chat",
 					"data": {"text": text},
+					"msg_id": ++msgId
+				}));
+			}
+			function sendWelcome(text){
+				var clientId = document.getElementById("clientId");
+				var accessToken = document.getElementById("accessToken");
+				if (ws) ws.send(JSON.stringify({
+					"type": "welcome",
+					"data": {"more": "tbd"},
 					"client_id": clientId.value,
 					"access_token": accessToken.value,
 					"msg_id": ++msgId
