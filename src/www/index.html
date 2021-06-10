@@ -38,7 +38,10 @@
 				<div class="group"><label>Client-ID:</label><input type="text" id="clientId" autocomplete="off" value="any"/></div>
 				<div class="group"><label>Access Token:</label><input type="text" id="accessToken" autocomplete="off" value="test123"/></div>
 				<div class="group">
+					<label>Tests:</label>
 					<button onclick="openConnection()">OPEN</button>
+					<button onclick="sendWelcome()">SEND WELCOME</button>
+					<button onclick="sendMessage('test');">TEST MESSAGE</button>
 					<button onclick="closeConnection()">CLOSE</button>
 				</div>
 			</div>
@@ -178,8 +181,7 @@
 				ws = new WebSocket(socketHost);
 				
 				ws.onopen = function(){
-					addMessage("Connection OPEN, sending welcome...");
-					sendWelcome();
+					addMessage("Connection OPEN");
 				}
 				
 				ws.onclose = function(){
@@ -187,7 +189,13 @@
 				}
 				
 				ws.onmessage = function(event){
-					addMessage(event.data);
+					if (event && event.data && typeof event.data == "string"){
+						try {
+							handleSocketMessage(JSON.parse(event.data));
+						}catch(err){
+							addMessage("ERROR - message handler saw invlaid JSON? " + err.name);
+						}
+					}
 				}
 				
 				ws.onerror = function(error){
@@ -198,28 +206,38 @@
 				if (ws) ws.close();
 			}
             			
-			function sendMessage(text){
-				if (ws) ws.send(JSON.stringify({
-					"type": "chat",
-					"data": {"text": text},
-					"msg_id": ++msgId
-				}));
+			function handleSocketMessage(msgJson){
+				addMessage(JSON.stringify(msgJson));	//DEBUG
+				if (msgJson.type == "ping"){
+					sendJson({type: "pong", msg_id: msgJson.msg_id});
+				}
 			}
-			function sendWelcome(text){
-				var clientId = document.getElementById("clientId");
-				var accessToken = document.getElementById("accessToken");
-				if (ws) ws.send(JSON.stringify({
-					"type": "welcome",
-					"data": {"more": "tbd"},
-					"client_id": clientId.value,
-					"access_token": accessToken.value,
-					"msg_id": ++msgId
-				}));
+
+			function sendJson(json){
+				if (ws) ws.send(JSON.stringify(json));
 			}
 			function sendBytes(){
 				var buffer = new ArrayBuffer(4);
 				var view = new DataView(buffer);
 				if (ws) ws.send(view);
+			}
+			function sendMessage(text){
+				sendJson({
+					"type": "chat",
+					"data": {"text": text},
+					"msg_id": ++msgId
+				});
+			}
+			function sendWelcome(text){
+				var clientId = document.getElementById("clientId");
+				var accessToken = document.getElementById("accessToken");
+				sendJson({
+					"type": "welcome",
+					"data": {"more": "tbd"},
+					"client_id": clientId.value,
+					"access_token": accessToken.value,
+					"msg_id": ++msgId
+				});
 			}
 			
 			//--- Messages and animations ---
