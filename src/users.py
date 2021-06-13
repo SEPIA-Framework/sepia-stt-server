@@ -6,6 +6,7 @@ import asyncio
 from fastapi import WebSocket
 
 from socket_messages import SocketMessage, SocketPingMessage, SocketErrorMessage
+from chunk_processor import ChunkProcessor
 
 # For now we just use a simple static token.
 COMMON_TOKEN = "test123"
@@ -35,12 +36,15 @@ class SocketUser:
         self.socket = websocket
         self.session_id = SessionIds.get_new_sesstion_id()
         self.task = self.create_heartbeat_loop_task()
+        self.processor = None
 
     async def authenticate(self, client_id, token):
         """Check if user is valid"""
         # TODO: Replace with user list
         if client_id is not None and token == COMMON_TOKEN:
             self.is_authenticated = True
+            # Create processor
+            self.processor = ChunkProcessor()
 
     async def send_message(self, message: SocketMessage):
         """Send socket message to user"""
@@ -57,9 +61,12 @@ class SocketUser:
         if is_binary_or_welcome:
             self.last_alive_sign = int(time.time())
     
-    def on_closed(self):
+    async def on_closed(self):
         """Connection was closed"""
         self.is_alive = False
+        # Close processor
+        if self.processor is not None:
+            await self.processor.close()
 
     async def heartbeat_loop(self):
         """Continous heart-beat check to make sure inactive
@@ -80,3 +87,8 @@ class SocketUser:
         """Create heart-beat loop task"""
         loop = asyncio.get_running_loop()
         return loop.create_task(self.heartbeat_loop())
+
+    async def process_audio_chunks(self, chunk: bytes):
+        """Process audio chunks with given processor"""
+        if self.processor is not None:
+            await self.processor.process(chunk)

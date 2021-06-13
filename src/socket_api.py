@@ -27,7 +27,7 @@ class SocketManager:
             del self.active_connections[user.session_id]
         # tell all clients that user left - TODO: deactivate (currently kept for debugging)
         await self.broadcast_to_all(SocketBroadcastMessage("chat", {"text": (f"User '{user.session_id}' left")}))
-        user.on_closed()
+        await user.on_closed()
         #print("CLIENT CLOSED")
 
     async def broadcast_to_all(self, message: SocketMessage):
@@ -116,5 +116,7 @@ async def on_binary_message(binary_data: bytes, user: SocketUser):
     # Note that client was active
     user.on_client_activity(True)
 
-    await user.send_message(SocketBroadcastMessage("info", {"text": (f"User '{user.session_id}' sent bytes")}))
-    # TODO: use 'run_in_threadpool' from 'starlette.concurrency' ?
+    # Process
+    await user.process_audio_chunks(binary_data)
+    #await user.send_message(SocketBroadcastMessage("info", {"text": (f"User '{user.session_id}' sent bytes")}))
+    

@@ -217,9 +217,35 @@
 				if (ws) ws.send(JSON.stringify(json));
 			}
 			function sendBytes(){
-				var buffer = new ArrayBuffer(4);
-				var view = new DataView(buffer);
-				if (ws) ws.send(view);
+				if (ws && lastRecording){
+					var orgLength = lastRecording.byteLength;
+					console.log("Sending approx. " + Math.round(orgLength/2/16000) + "s of audio in chunks of 512 (16bit)");
+					var n = Math.floor(orgLength/2/512);
+					var rest = orgLength - (n*2*512);
+					var totalSent = 0;
+					var chunks = [];
+					for (let i=0; i<(orgLength - rest); i+=1024){
+						chunks.push(lastRecording.buffer.slice(i, i + 1024));
+					}
+					chunks.push(lastRecording.buffer.slice(n*1024, n*1024 + rest));
+					var sentN = 0;
+					var completeCallback = function(){
+						console.log("Sent " + totalSent + " of " + orgLength + " bytes");	//DEBUG
+						sendAudioEnd(orgLength);
+					};
+					chunks.forEach(function(b, j){
+						//we don't want to send all at once ...
+						setTimeout(function(){
+							if (ws) ws.send(b);
+							totalSent += b.byteLength;
+							sentN++;
+							if (sentN >= chunks.length){
+								//console.log("sent " + j, b.byteLength);	//DEBUG
+								completeCallback();
+							}
+						}, j*15);
+					});
+				}
 			}
 			function sendMessage(text){
 				sendJson({
@@ -236,6 +262,13 @@
 					"data": {"more": "tbd"},
 					"client_id": clientId.value,
 					"access_token": accessToken.value,
+					"msg_id": ++msgId
+				});
+			}
+			function sendAudioEnd(byteLength){
+				sendJson({
+					"type": "audioend",
+					"data": {"byteLength": byteLength},
 					"msg_id": ++msgId
 				});
 			}
