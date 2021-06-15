@@ -10,7 +10,7 @@ from settings import SettingsFile
 
 # Server constants
 SERVER_NAME = "SEPIA STT Server V2 BETA"
-SERVER_VERSION = "0.0.2"
+SERVER_VERSION = "0.1.0"
 
 # Run arguments
 argv=sys.argv[1:]
@@ -45,6 +45,6 @@ if __name__ == "__main__":
     main()
 else:
     # TODO: how to properly use Fast API logger?
-    print(f"Settings file used: '{settings.active_settings_file}'")
-    print(f"Settings file tag: '{settings.settings_tag}'")
-    print("Starting server...")
+    print(f"SEPIA STT Server - Settings file used: '{settings.active_settings_file}'")
+    print(f"SEPIA STT Server - Settings file tag: '{settings.settings_tag}'")
+    print("SEPIA STT Server - Starting...")

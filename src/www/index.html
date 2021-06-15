@@ -199,22 +199,34 @@
 				}
 				
 				ws.onerror = function(error){
-					addMessage("ERROR");
-				}
-			}
-			function closeConnection(){
-				if (ws) ws.close();
-			}
-            			
-			function handleSocketMessage(msgJson){
-				addMessage(JSON.stringify(msgJson));	//DEBUG
-				if (msgJson.type == "ping"){
-					sendJson({type: "pong", msg_id: msgJson.msg_id});
+					handleSocketError(error);
 				}
 			}
 
+			function closeConnection(){
+				if (ws && ws.readyState == ws.OPEN) ws.close();
+			}
+            			
+			function handleSocketMessage(msgJson){
+				if (msgJson.type == "error"){
+					handleSocketError(msgJson);
+				}else{
+					addMessage(JSON.stringify(msgJson));	//DEBUG
+					if (msgJson.type == "ping"){
+						//TODO: send only after welcome
+						sendJson({type: "pong", msg_id: msgJson.msg_id});
+					}
+				}
+			}
+			function handleSocketError(err){
+				var msg = (err && err.name)? (err.name + " - " + (err.message || "?")) : "?";
+				addMessage("ERROR: " + msg);
+				//Errors are not acceptable :-p - close in any case
+				closeConnection();
+			}
+
 			function sendJson(json){
-				if (ws) ws.send(JSON.stringify(json));
+				if (ws && ws.readyState == ws.OPEN) ws.send(JSON.stringify(json));
 			}
 			function sendBytes(){
 				if (ws && lastRecording){
@@ -236,8 +248,10 @@
 					chunks.forEach(function(b, j){
 						//we don't want to send all at once ...
 						setTimeout(function(){
-							if (ws) ws.send(b);
-							totalSent += b.byteLength;
+							if (ws && ws.readyState == ws.OPEN){
+								ws.send(b);
+								totalSent += b.byteLength;
+							}
 							sentN++;
 							if (sentN >= chunks.length){
 								//console.log("sent " + j, b.byteLength);	//DEBUG

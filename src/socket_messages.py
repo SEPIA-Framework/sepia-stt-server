@@ -19,7 +19,7 @@ class MessageIds:
             MessageIds.last_message_id = 1
         return MessageIds.last_message_id
 
-class SocketJsonMessage(BaseModel):
+class SocketJsonInputMessage(BaseModel):
     """Incoming socket message in JSON format"""
     type: str   # for example: "welcome"
     data: Optional[dict] = None
@@ -47,6 +47,15 @@ class SocketPingMessage(SocketMessage):
     def __init__(self, msg_id):
         super().__init__("ping", msg_id)
 
+class SocketResponseMessage(SocketMessage):
+    """Ping message to check if client is alive"""
+    def __init__(self, msg_id, response_text = None, data = None):
+        super().__init__("response", msg_id)
+        if response_text is not None:
+            self.set_field("response", response_text)
+        if data is not None:
+            self.set_field("data", data)
+
 class SocketWelcomeMessage(SocketMessage):
     """Welcome message (sent after authentication)"""
     def __init__(self, msg_id):
@@ -58,6 +67,18 @@ class SocketWelcomeMessage(SocketMessage):
             "more": "tbd"
             # add e.g.: languages, engine, models, features...
         })
+
+class SocketTranscriptMessage(SocketMessage):
+    """Result message to be sent for example when ASR engine transcribed audio etc."""
+    def __init__(self, transcript, is_final, confidence = -1, features = None, alternatives = None):
+        super().__init__("result")
+        self.set_field("transcript", transcript)
+        self.set_field("isFinal", is_final)
+        self.set_field("confidence", confidence)
+        if features is not None:
+            self.set_field("features", features)    # This can be engine-specific (speaker_id etc.)
+        if alternatives is not None:
+            self.set_field("alternatives", alternatives)
 
 class SocketBroadcastMessage(SocketMessage):
     """Socket message for broadcasting"""

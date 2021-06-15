@@ -4,7 +4,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 from pydantic import ValidationError
 
-from socket_messages import (SocketJsonMessage, SocketMessage,
+from socket_messages import (SocketJsonInputMessage, SocketMessage,
     SocketWelcomeMessage, SocketBroadcastMessage, SocketErrorMessage)
 from users import SocketUser
 #from launch import settings
@@ -52,7 +52,7 @@ class WebsocketApiEndpoint:
                 if "text" in data:
                     # JSON messages
                     try:
-                        json_obj = SocketJsonMessage.parse_raw(data['text'])
+                        json_obj = SocketJsonInputMessage.parse_raw(data['text'])
                         await on_json_message(json_obj, user)
                     except ValidationError:
                         await user.send_message(SocketErrorMessage(400,
@@ -75,7 +75,7 @@ class WebsocketApiEndpoint:
 
 # Message handlers:
 
-async def on_json_message(socket_message: SocketJsonMessage, user: SocketUser):
+async def on_json_message(socket_message: SocketJsonInputMessage, user: SocketUser):
     """Handle messages in JSON format"""
 
     # handle welcome event
@@ -99,6 +99,9 @@ async def on_json_message(socket_message: SocketJsonMessage, user: SocketUser):
         if socket_message.type == "pong":
             # Note that client was active (but without data)
             user.on_client_activity(False)
+        # Audio input end
+        elif socket_message.type == "audioend":
+            await user.finish_processing(socket_message)
         # Anything else ...
         else:
             # TODO: replace? remove?
