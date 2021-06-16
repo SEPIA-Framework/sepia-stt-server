@@ -3,9 +3,11 @@
 import time
 import asyncio
 
+from uvicorn.config import logger
 from fastapi import WebSocket
 
-from socket_messages import SocketJsonInputMessage, SocketMessage, SocketPingMessage, SocketErrorMessage
+from socket_messages import (SocketJsonInputMessage,
+    SocketMessage, SocketPingMessage, SocketErrorMessage)
 from chunk_processor import ChunkProcessor
 
 # For now we just use a simple static token.
@@ -44,7 +46,12 @@ class SocketUser:
         if client_id is not None and token == COMMON_TOKEN:
             self.is_authenticated = True
             # Create processor
-            self.processor = ChunkProcessor(processor_name=None, send_message=self.send_message)
+            try:
+                self.processor = ChunkProcessor(processor_name=None, send_message=self.send_message)
+            except RuntimeError:
+                logger.exception("ChunkProcessor - Failed to create processor")
+                await self.send_message(SocketErrorMessage(500,
+                    "ChunkProcessorError", "Failed to create processor."))
 
     async def send_message(self, message: SocketMessage):
         """Send socket message to user"""

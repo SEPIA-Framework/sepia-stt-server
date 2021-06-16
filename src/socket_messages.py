@@ -60,12 +60,16 @@ class SocketWelcomeMessage(SocketMessage):
     """Welcome message (sent after authentication)"""
     def __init__(self, msg_id):
         super().__init__("welcome", msg_id)
+        features = []
+        if settings.has_speaker_detection:
+            features.append("speaker_detection")
         self.set_field("info", {
             "version": SERVER_VERSION,
             "engine": settings.asr_engine,
             "models": settings.asr_model_paths,
-            "more": "tbd"
-            # add e.g.: languages, engine, models, features...
+            "languages": settings.asr_model_languages,
+            "features": features
+            # add more?
         })
 
 class SocketTranscriptMessage(SocketMessage):

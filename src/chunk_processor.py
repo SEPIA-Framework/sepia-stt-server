@@ -6,19 +6,24 @@ from starlette.concurrency import run_in_threadpool
 from uvicorn.config import logger
 
 from launch import settings
-from socket_messages import (SocketJsonInputMessage,
-    SocketResponseMessage, SocketTranscriptMessage, SocketErrorMessage)
+from socket_messages import (SocketJsonInputMessage, SocketResponseMessage, SocketErrorMessage)
+from engine_interface import EngineInterface
+from engine_vosk import VoskProcessor
 
 class ChunkProcessor():
     """Common class to handle byte chunks using different processors"""
-    def __init__(self, processor_name: str = None, send_message = None):
+    def __init__(self, processor_name: str = None, send_message = None, options = None):
         """Define processor via name"""
         self.send_message = send_message
         if processor_name is None:
             processor_name = settings.asr_engine
+        # Vosk ASR
+        if processor_name == "vosk":
+            self.processor = VoskProcessor(send_message, options)
         # Write to file
-        if processor_name == "wave_file_writer":
+        elif processor_name == "wave_file_writer":
             self.processor = WaveFileWriter(send_message)
+        # Test
         elif processor_name == "test":
             self.processor = ThreadTestProcessor(send_message)
 
@@ -44,39 +49,6 @@ class ChunkProcessor():
         """Close processor (to clean up and close streams etc.)"""
         if self.processor is not None and self.processor.is_open:
             await self.processor.close()
-
-class EngineInterface():
-    """Interface for chunk processor engines"""
-    def __init__(self, send_message = None):
-        self.send_message = send_message
-        self.accept_chunks = True
-        self.is_open = True
-
-    async def process(self, chunk: bytes):
-        """Process chunk"""
-    async def finish_processing(self):
-        """Block new process requests, wait for last process to finish and send result"""
-    async def close(self):
-        """Close and clean up"""
-
-    async def send_transcript(self,
-        transcript, is_final = False, confidence = -1, features = None, alternatives = None):
-        """Send transcript result"""
-        if self.send_message is not None:
-            msg = SocketTranscriptMessage(
-                transcript, is_final, confidence, features, alternatives)
-            await self.send_message(msg)
-
-    async def on_before_close(self):
-        """Run before close for any required extra action"""
-        self.is_open = False
-
-    async def on_error(self, error_message):
-        """Send error message"""
-        self.accept_chunks = False
-        if self.send_message is not None:
-            await self.send_message(
-                SocketErrorMessage(500, "AsrEngineError", error_message))
 
 #--- FILE WRITER ---
 

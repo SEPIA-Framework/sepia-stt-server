@@ -43,9 +43,21 @@ class SettingsFile:
             self.recordings_path = settings.get("app", "recordings_path")
             self.asr_engine = settings.get("app", "asr_engine")
             self.asr_model_paths = []
-            for key, path in settings.items("asr_models"):
+            self.asr_model_languages = []
+            for key, val in settings.items("asr_models"):
                 if key.startswith("path"):
-                    self.asr_model_paths.append(path)
+                    self.asr_model_paths.append(val)
+                elif key.startswith("lang"):
+                    self.asr_model_languages.append(val)
+            self.speaker_model_paths = []
+            for key, val in settings.items("speaker_models"):
+                if key.startswith("path"):
+                    self.speaker_model_paths.append(val)
+            if len(self.speaker_model_paths) > 0:
+                self.has_speaker_detection = True
+            else:
+                self.has_speaker_detection = False
+                self.speaker_model_paths.append(None)
                 
         except configparser.Error as err:
             print("Settings error:", err, file=sys.stderr)
