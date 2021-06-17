@@ -36,25 +36,24 @@
 			<h2>Connection</h2>
 			<div class="section">
 				<div class="group"><label>Client-ID:</label><input type="text" id="clientId" autocomplete="off" value="any"/></div>
-				<div class="group"><label>Access Token:</label><input type="text" id="accessToken" autocomplete="off" value="test123"/></div>
+				<div class="group"><label>Access Token:</label><input type="text" id="accessToken" autocomplete="off" value="test1234"/></div>
 				<div class="group">
 					<label>Tests:</label>
 					<button onclick="openConnection()">OPEN</button>
 					<button onclick="sendWelcome()">SEND WELCOME</button>
 					<button onclick="sendMessage('test');">TEST MESSAGE</button>
+					<button onclick="sendBytes()">SEND LAST RECORDING</button>
 					<button onclick="closeConnection()">CLOSE</button>
 				</div>
 			</div>
-			<h2>Messages</h2>
-			<div class="section">
+			<h2>Messages <button onclick="clearMessages()" style="vertical-align: middle;">Clear Log</button></h2>
+			<!--<div class="section">
 				<div class="group" style="flex: 1 1 auto;">
 					<label>Message:</label>
 					<input type="text" id="messageText" autocomplete="off"/>
 					<button onclick="sendTextFromIput()">Send</button>
-					<button onclick="sendBytes()">Send Bytes</button>
-					<button onclick="clearMessages()">Clear Log</button>
 				</div>
-			</div>
+			</div>-->
 			<div>
 				<ul id='messages'>
 					<li>Log:</li>
@@ -81,6 +80,7 @@
 						SepiaFW.webAudio.tryNativeStreamResampling = false;		//try native resampling?
 						SepiaVoiceRecorder.create({
 							gain: +gainNode.value,
+							//fileUrl: "test-audio/hallo_dies_ist_ein_test.wav",
 							//recordingLimitMs: 10000
 						});
 					});
@@ -167,6 +167,30 @@
 				lastRecording = waveData;
 				var targetEle = addMessage("WAV Result:");
 				SepiaVoiceRecorder.addAudioElementToPage(targetEle, waveData, "audio/wav");
+			}
+
+			//--- HTTP ---
+
+			function getServerInfo(){
+				fetch(location.origin + "/settings", {
+					method: "GET"
+				}).then(function(res){
+					if (res.ok){
+						return res.json();
+					}else{
+						throw {"name": "FetchError", "message": res.statusText, "code": res.status};
+					}
+				}).then(function(json){
+					console.log("Fetch RES", json);
+				}).catch(function(err){
+					console.error("Fetch ERROR", err);
+				});
+			}
+			function pingServer(){
+				fetch(location.origin + "/ping")
+				.then(function(res){ return res.json(); })
+				.then(console.log)
+				.catch(console.error);
 			}
 		
 			//--- WebSocket ---
@@ -289,15 +313,18 @@
 			
 			//--- Messages and animations ---
 
-			document.getElementById("messageText").addEventListener("keyup", function(event){
-				if (event.key === "Enter"){
-					sendTextFromIput(this);
+			var textInputElement = document.getElementById("messageText");
+			if (textInputElement){
+				textInputElement.addEventListener("keyup", function(event){
+					if (event.key === "Enter"){
+						sendTextFromIput(this);
+					}
+				});
+				function sendTextFromIput(input){
+					if (!input) input = textInputElement;
+					sendMessage(input.value);
+					input.value = "";
 				}
-			});
-			function sendTextFromIput(input){
-				if (!input) input = document.getElementById("messageText");
-				sendMessage(input.value);
-				input.value = "";
 			}
 			
 			var messages = document.getElementById('messages');

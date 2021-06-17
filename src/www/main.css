@@ -1,7 +1,8 @@
 body {
 	font-family: sans-serif;
 	margin: 0;
-    padding: 8px 0;
+	padding: 8px 0;
+	font-size: 15px;
 }
 label, input, button {
 	margin: 8px;
@@ -11,7 +12,10 @@ label + input, label + button, button + button {
 	margin-left: 0px;
 }
 input[type=number] {
-	width: 72px;
+	width: 64px;
+}
+input[type=text] {
+	width: 128px;
 }
 .page {
 	max-width: 1024px;
@@ -87,12 +91,12 @@ input[type=number] {
 #messages {
 	background: #eee;
     padding: 8px;
-    font-size: 14px;
+    font-size: 13px;
     border: 1px solid #aaa;
 	overflow: auto;
     /*max-height: 40vh;*/
 }
 #messages li {
 	list-style: none;
-	margin: 8px 0;
+	margin: 6px 0;
 }
