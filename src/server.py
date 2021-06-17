@@ -44,10 +44,15 @@ async def get_ping():
     """Endpoint to get some public server info"""
     return {"result": "success", "server": SERVER_NAME, "version": SERVER_VERSION}
 
+@app.get("/settings")
+async def get_settings():
+    """Endpoint to GET server settings remotely"""
+    return http_endpoint.handle_settings_req_get()
+
 @app.post("/settings")
 async def post_settings(req: SettingsRequest, response: Response):
     """Endpoint to set server settings remotely"""
-    return http_endpoint.handle_settings_req(req, response)
+    return http_endpoint.handle_settings_req_post(req, response)
 
 @app.websocket("/")
 async def websocket_endpoint(socket: WebSocket):

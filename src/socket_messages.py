@@ -4,7 +4,7 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from launch import settings, SERVER_VERSION
+from launch import get_settings_response
 
 class MessageIds:
     """Generate message IDs"""
@@ -60,17 +60,7 @@ class SocketWelcomeMessage(SocketMessage):
     """Welcome message (sent after authentication)"""
     def __init__(self, msg_id):
         super().__init__("welcome", msg_id)
-        features = []
-        if settings.has_speaker_detection:
-            features.append("speaker_detection")
-        self.set_field("info", {
-            "version": SERVER_VERSION,
-            "engine": settings.asr_engine,
-            "models": settings.asr_model_paths,
-            "languages": settings.asr_model_languages,
-            "features": features
-            # add more?
-        })
+        self.set_field("info", get_settings_response())
 
 class SocketTranscriptMessage(SocketMessage):
     """Result message to be sent for example when ASR engine transcribed audio etc."""
@@ -78,7 +68,8 @@ class SocketTranscriptMessage(SocketMessage):
         super().__init__("result")
         self.set_field("transcript", transcript)
         self.set_field("isFinal", is_final)
-        self.set_field("confidence", confidence)
+        if confidence >= 0:
+            self.set_field("confidence", confidence)
         if features is not None:
             self.set_field("features", features)    # This can be engine-specific (speaker_id etc.)
         if alternatives is not None:
@@ -97,4 +88,3 @@ class SocketErrorMessage(SocketMessage):
         self.set_field("code", code)
         self.set_field("name", name)
         self.set_field("message", message)
-

@@ -6,12 +6,13 @@ import asyncio
 from uvicorn.config import logger
 from fastapi import WebSocket
 
+from launch import settings
 from socket_messages import (SocketJsonInputMessage,
     SocketMessage, SocketPingMessage, SocketErrorMessage)
 from chunk_processor import ChunkProcessor
 
 # For now we just use a simple static token.
-COMMON_TOKEN = "test123"
+COMMON_TOKEN = settings.common_auth_token
 
 # Client timeout - kick fast
 HEARTBEAT_DELAY = 10
@@ -40,18 +41,32 @@ class SocketUser:
         self.task = self.create_heartbeat_loop_task()
         self.processor = None
 
-    async def authenticate(self, client_id, token):
+    async def authenticate(self, socket_message: SocketJsonInputMessage):
         """Check if user is valid"""
-        # TODO: Replace with user list
-        if client_id is not None and token == COMMON_TOKEN:
+        client_id = socket_message.client_id
+        token = socket_message.access_token
+        processor_options = socket_message.data
+        # Try one token for all
+        if COMMON_TOKEN and token == COMMON_TOKEN:
             self.is_authenticated = True
-            # Create processor
+        # Try user list
+        elif client_id and token:
+            if client_id in settings.user_tokens:
+                user_token = settings.user_tokens[client_id]
+                if user_token is not None and user_token == token:
+                    self.is_authenticated = True
+        # Create processor
+        if self.is_authenticated:
             try:
-                self.processor = ChunkProcessor(processor_name=None, send_message=self.send_message)
+                self.processor = ChunkProcessor(processor_name=None, 
+                    send_message=self.send_message, options=processor_options)
             except RuntimeError:
                 logger.exception("ChunkProcessor - Failed to create processor")
                 await self.send_message(SocketErrorMessage(500,
                     "ChunkProcessorError", "Failed to create processor."))
+        else:
+            logger.warning("User %s failed to authenticate!", client_id)
+            await asyncio.sleep(3)
 
     async def send_message(self, message: SocketMessage):
         """Send socket message to user"""
@@ -100,7 +115,7 @@ class SocketUser:
         """Process audio chunks with given processor"""
         if self.processor is not None:
             await self.processor.process(chunk)
-    
+
     async def finish_processing(self, message: SocketJsonInputMessage):
         """Stop accepting audio chunks and wait for last  result"""
         if self.processor is not None:

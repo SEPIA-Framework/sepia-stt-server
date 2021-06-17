@@ -40,6 +40,22 @@ def main():
         log_level=settings.log_level,
         reload=settings.code_reload)
 
+def get_settings_response():
+    """Get settings for info messages"""
+    features = []
+    if settings.has_speaker_detection:
+        features.append("speaker_detection")
+    if settings.asr_engine == "vosk":
+        features.append("partial_results")
+    return {
+        "version": SERVER_VERSION,
+        "engine": settings.asr_engine,
+        "models": settings.asr_model_paths,
+        "languages": settings.asr_model_languages,
+        "features": features
+        # add more?
+    }
+
 # Run if this is called as main
 if __name__ == "__main__":
     main()

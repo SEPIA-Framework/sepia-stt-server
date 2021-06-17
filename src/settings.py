@@ -36,10 +36,21 @@ class SettingsFile:
         # Validate config:
         try:
             self.settings_tag = settings.get("info", "settings_tag")
+            # Server
             self.host = settings.get("server", "host")
             self.port = int(settings.get("server", "port"))
             self.cors_origins = settings.get("server", "cors_origins").split(",")
             self.log_level = settings.get("server", "log_level")
+            # Auth
+            self.common_auth_token = settings.get("users", "common_auth_token")
+            self.user_tokens = {}
+            last_user = ""
+            for key, val in settings.items("users"):
+                if key.startswith("user"):
+                    last_user = val
+                elif key.startswith("token"):
+                    self.user_tokens[last_user] = val
+            # Engines
             self.recordings_path = settings.get("app", "recordings_path")
             self.asr_engine = settings.get("app", "asr_engine")
             self.asr_model_paths = []

@@ -83,7 +83,7 @@ async def on_json_message(socket_message: SocketJsonInputMessage, user: SocketUs
         # Note that client was active
         user.on_client_activity(True)
 
-        await user.authenticate(socket_message.client_id, socket_message.access_token)
+        await user.authenticate(socket_message)
         if user.is_authenticated:
             welcome_message = SocketWelcomeMessage(socket_message.msg_id)
             await user.send_message(welcome_message)

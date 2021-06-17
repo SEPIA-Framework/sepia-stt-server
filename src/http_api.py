@@ -3,10 +3,7 @@
 from fastapi import Response, status
 from pydantic import BaseModel
 
-class Languages:
-    """Available languages given as ISO 639-1 codes used by SEPIA"""
-    DE = "de"
-    EN = "en"
+from launch import get_settings_response
 
 class SettingsRequest(BaseModel):
     """Request to modify server settings"""
@@ -14,8 +11,13 @@ class SettingsRequest(BaseModel):
 
 class HttpApiEndpoint:
     """HTTP endpoint handler"""
-    async def handle_settings_req(self, req: SettingsRequest, response: Response):
-        """Handle settings request"""
+    def handle_settings_req_get(self):
+        """Handle settings GET request"""
+        return {
+            "result": "success",
+            "settings": get_settings_response()
+        }
+    async def handle_settings_req_post(self, req: SettingsRequest, response: Response):
+        """Handle settings POST request"""
         response.status_code=status.HTTP_501_NOT_IMPLEMENTED
         return ""
-        
