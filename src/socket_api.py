@@ -23,7 +23,7 @@ class SocketManager:
 
     async def onclose(self, user: SocketUser):
         """WebSocket onclose event"""
-        if (self.active_connections[user.session_id] is not None):
+        if self.active_connections[user.session_id] is not None:
             del self.active_connections[user.session_id]
         # tell all clients that user left - TODO: deactivate (currently kept for debugging)
         await self.broadcast_to_all(SocketBroadcastMessage("chat", {"text": (f"User '{user.session_id}' left")}))
@@ -39,7 +39,7 @@ class WebsocketApiEndpoint:
     """Class to handles WebSocket API requests"""
     def __init__(self):
         WebsocketApiEndpoint.socket_manager = SocketManager()
-        
+
     async def handle(self, websocket: WebSocket):
         """Handle WebSocket events"""
         try:
@@ -59,7 +59,7 @@ class WebsocketApiEndpoint:
                             "InvalidMessage", "JSON message invalid or incomplete."))
                 elif "bytes" in data:
                     # Binary messages
-                    if (user.is_authenticated):
+                    if user.is_authenticated:
                         await on_binary_message(data['bytes'], user)
                     else:
                         await user.send_message(SocketErrorMessage(401,
@@ -92,7 +92,7 @@ async def on_json_message(socket_message: SocketJsonInputMessage, user: SocketUs
                 "Unauthorized", "Authentication failed."))
             await user.socket.close(1000)
             #WebsocketApiEndpoint.socket_manager.onclose(user) # use?
-    
+
     # handle any authenticated request
     elif user.is_authenticated:
         # Pong
@@ -107,7 +107,7 @@ async def on_json_message(socket_message: SocketJsonInputMessage, user: SocketUs
             # TODO: replace? remove?
             await user.send_message(SocketBroadcastMessage(
                 "chat", {"text": (f"You wrote: {socket_message.data}")}))
-    
+
     # refuse everything else
     else:
         await user.send_message(SocketErrorMessage(401,
@@ -122,4 +122,3 @@ async def on_binary_message(binary_data: bytes, user: SocketUser):
     # Process
     await user.process_audio_chunks(binary_data)
     #await user.send_message(SocketBroadcastMessage("info", {"text": (f"User '{user.session_id}' sent bytes")}))
-    

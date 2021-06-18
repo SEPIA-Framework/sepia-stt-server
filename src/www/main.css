@@ -4,18 +4,69 @@ body {
 	padding: 8px 0;
 	font-size: 15px;
 }
-label, input, button {
+h2 {
+	margin: 24px 0 8px 0;
+}
+h1, h2, h3 {
+	display: flex;
+    align-items: center;
+}
+label, input, select, label + span {
 	margin: 8px;
 	padding: 4px 6px;
-}
-label + input, label + button, button + button {
-	margin-left: 0px;
 }
 input[type=number] {
 	width: 64px;
 }
 input[type=text] {
 	width: 128px;
+}
+label + span {
+	border: 1px solid #ccc;
+    border-radius: 3px;
+	cursor: default;
+	min-height: 16px;
+}
+button {
+	background: #000;
+    color: #eee;
+    border-radius: 3px;
+    cursor: pointer;
+    height: 25px;
+	padding: 4px 12px;
+	margin: 8px;
+	border: 0;
+	box-shadow: 0px 1px 0px 1px #ccc;
+}
+@media (hover: hover) and (pointer: fine){
+	button:hover {
+		background: #111;
+		color: #ceff1a;
+	}
+	button:active {
+		box-shadow: unset;
+		margin-top: 9px;
+		margin-bottom: 7px;
+	}
+}
+label + input, label + select, label + button, button + button {
+	margin-left: 0px;
+}
+h1 > button {
+	margin: 0 16px 0 0;
+    border-radius: 15px;
+    min-height: 30px;
+    min-width: 30px;
+    background: #fff;
+    border: 1px solid #999;
+    color: #000;
+    font-size: 18px;
+    padding: 0;
+}
+h2 > button {
+	background: #fff;
+    border: 1px solid #999;
+    color: #000;
 }
 .page {
 	max-width: 1024px;
@@ -36,6 +87,7 @@ input[type=text] {
 	justify-content: center;
 	align-items: center;
 	max-width: 100%;
+	margin-top: 4px;
 }
 @media screen and ( min-width: 1110px ) and ( min-height: 512px ){
 	.page {
@@ -77,6 +129,11 @@ input[type=text] {
 	border-radius: 50%;
 	margin: 16px;
 	cursor: pointer;
+}
+@media (hover: hover) and (pointer: fine){
+	#micButton:active {
+		margin: 17px 16px 15px 16px;
+	}
 }
 #micButton.loading {
 	background-color: #999;

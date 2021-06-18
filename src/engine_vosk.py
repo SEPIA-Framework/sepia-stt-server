@@ -31,7 +31,7 @@ class VoskProcessor(EngineInterface):
             phrase_list = options.get("phrases")
             # NOTE: add more here
         # Recognizer
-        if language is None or language not in settings.asr_model_languages:
+        if not language or language not in settings.asr_model_languages:
             asr_model_path = settings.asr_model_paths[0]    #"../models/vosk-model-small-de"
         else:
             asr_model_path = settings.asr_model_paths[settings.asr_model_languages.index(language)]
@@ -46,7 +46,7 @@ class VoskProcessor(EngineInterface):
         if self._speaker_detection:
             self._spk_model = SpkModel(spk_model_path)
         # Use phrase list?
-        if phrase_list is not None and len(phrase_list) > 0:
+        if phrase_list and len(phrase_list) > 0:
             self._recognizer = KaldiRecognizer(self._model, self._sample_rate,
                 json.dumps(phrase_list, ensure_ascii=False))
         else:

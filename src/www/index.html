@@ -3,377 +3,40 @@
     <head>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1">
-        
 		<title>STT-Server</title>
 		<link rel="shortcut icon" type="image/x-icon" href="favicon.ico">
-		<link rel="stylesheet" href="main.css">
-		
-		<!-- SEPIA Web Audio Lib -->
-		<script type="text/javascript" src="sepia-web-audio.min.js?v=0.9.5"></script>
-		<script type="text/javascript" src="sepia-recorder.js"></script>
-		<script>
-			//set correct modules folder
-			SepiaFW.webAudio.defaultProcessorOptions.moduleFolder = "audio-modules";
-		</script>
-		
 		<style>
+			body { 
+				padding: 16px;
+				font-family: sans-serif;
+				display: flex;
+				flex-direction: column;
+			}
+			a { 
+				padding: 8px;
+				margin: 8px;
+				background: #000;
+				text-decoration: none;
+				color: #ceff1a;
+				text-align: center;
+				border-radius: 3px;
+				box-shadow: 0px 1px 0px 1px #ccc;
+			}
+			.page {
+				display: flex;
+				flex-direction: column;
+				align-items: stretch;
+				width: 320px;
+				max-width: 100%;
+			}
 		</style>
     </head>
     <body>
+		<h2>Welcome to SEPIA STT Server V2</h2>
+		<h3>Choose a page:</h3>
 		<div class="page">
-			<h1>SEPIA STT Server (V2)</h1>
-			<p>This is the test page for the SEPIA STT server. Use the microphone to record audio then connect to the server and stream the last recording to get the transcription.</p>
-			<p>More advanced demos can be found here: <a href="https://sepia-framework.github.io/app/index.html" target=_blank>SEPIA Client</a> and here: <a href="https://github.com/SEPIA-Framework/sepia-web-audio" target=_blank>SEPIA Web Audio Lib</a></p>
-			<h2>Recorder</h2>
-			<div class="section">
-				<div class="group"><label>Start/Stop:</label><button id="micButton" onclick="toggleMic();"></button></div>
-				<div class="group"><label>Gain:</label><input id="microphoneGain" class="small" type="number" value="1.0"></div>
-				<div class="group"><label>Vol. Meter (green = good):</label><div id="volumeMeter"><div id="volumeBar"></div></div></div>
-			</div>
-			<div class="section">
-				<div class="group"><label>Source Info:</label><span id="recoderInfo" style="flex: 1 1 auto;"></span></div>
-			</div>
-			<h2>Connection</h2>
-			<div class="section">
-				<div class="group"><label>Client-ID:</label><input type="text" id="clientId" autocomplete="off" value="any"/></div>
-				<div class="group"><label>Access Token:</label><input type="text" id="accessToken" autocomplete="off" value="test1234"/></div>
-				<div class="group">
-					<label>Tests:</label>
-					<button onclick="openConnection()">OPEN</button>
-					<button onclick="sendWelcome()">SEND WELCOME</button>
-					<button onclick="sendMessage('test');">TEST MESSAGE</button>
-					<button onclick="sendBytes()">SEND LAST RECORDING</button>
-					<button onclick="closeConnection()">CLOSE</button>
-				</div>
-			</div>
-			<h2>Messages <button onclick="clearMessages()" style="vertical-align: middle;">Clear Log</button></h2>
-			<!--<div class="section">
-				<div class="group" style="flex: 1 1 auto;">
-					<label>Message:</label>
-					<input type="text" id="messageText" autocomplete="off"/>
-					<button onclick="sendTextFromIput()">Send</button>
-				</div>
-			</div>-->
-			<div>
-				<ul id='messages'>
-					<li>Log:</li>
-				</ul>
-			</div>
+			<a href='test.html'>Web Interface - Manual Test</a>
+			<a href='../docs'>Open Docs (auto-generated)</a>
 		</div>
-        <script>
-			//--- Recorder ---
-			
-			var volumeThresholds = [0.05, 10];		//too low/too high
-			var gainNode = document.getElementById("microphoneGain");
-			
-			var isLoading = false;
-			var isRecording = false;
-			var waveBuffering = false;
-			var lastRecording;
-			
-			function toggleMic(){
-				if (!isLoading && !isRecording){
-					isLoading = true;
-					setMicState("loading");
-					//for this demo we create a new recorder each time
-					SepiaVoiceRecorder.stopAndReleaseIfActive(function(){
-						SepiaFW.webAudio.tryNativeStreamResampling = false;		//try native resampling?
-						SepiaVoiceRecorder.create({
-							gain: +gainNode.value,
-							//fileUrl: "test-audio/hallo_dies_ist_ein_test.wav",
-							//recordingLimitMs: 10000
-						});
-					});
-					
-				}else if (isRecording){
-					SepiaVoiceRecorder.stop();
-				
-				}else if (isLoading){
-					isLoading = true;
-					setMicState("loading");
-					SepiaVoiceRecorder.stopAndReleaseIfActive(function(){
-						isLoading = false;
-						isRecording = false;
-						setMicState("idle");
-					});
-				}
-			}
-			function onMicError(){
-				setMicState("error");
-				isRecording = false;
-				isLoading = false;
-			}
-			
-			SepiaVoiceRecorder.onProcessorReady = function(info){
-				console.log("SepiaVoiceRecorder -  onProcessorReady", info);
-				document.getElementById("recoderInfo").textContent = "Sample-rate: " + info.targetSampleRate 
-					+ "Hz (rf:" + (info.inputSampleRate/info.targetSampleRate) + ") - Label: " + (info.sourceInfo? info.sourceInfo.label : "");
-				setMicState("idle");
-				isLoading = false;
-				isRecording = false;
-				waveBuffering = false;
-				SepiaVoiceRecorder.start();
-			}
-			SepiaVoiceRecorder.onProcessorInitError = function(err){
-				console.error("SepiaVoiceRecorder -  onProcessorInitError", err);
-				onMicError();
-				addMessage("ERROR - onProcessorInitError: " + err.message);
-			}
-			SepiaVoiceRecorder.onProcessorError = function(err){
-				console.error("SepiaVoiceRecorder -  onProcessorError", err);
-				onMicError();
-				addMessage("ERROR - onProcessorError: " + err.name);
-			}
-
-			SepiaVoiceRecorder.onAudioStart = function(info){
-				console.log("SepiaVoiceRecorder -  onAudioStart");
-				isRecording = true;
-				setMicState("recording");
-				addMessage("Microphone is OPEN");
-			}
-			SepiaVoiceRecorder.onAudioEnd = function(info){
-				console.log("SepiaVoiceRecorder -  onAudioEnd");
-				isRecording = false;
-				setMicState("idle");
-				addMessage("Microphone is CLOSED");
-			}
-
-			SepiaVoiceRecorder.onProcessorRelease = function(info){
-				console.log("SepiaVoiceRecorder -  onProcessorRelease");
-				setMicState("idle");
-				isRecording = false;
-				isLoading = false;
-			}
-
-			SepiaVoiceRecorder.onDebugLog = function(msg){}
-			
-			SepiaVoiceRecorder.onResamplerData = function(data){
-				//console.log("SepiaVoiceRecorder -  onResamplerData", data.rms);
-				setVolume(data.rms);
-			}
-			SepiaVoiceRecorder.onWaveEncoderStateChange = function(state){
-				if (state.isOpen == true){
-					if (!waveBuffering) addMessage("WAV Recorder - Started capturing");
-					waveBuffering = true;
-				}else if (state.isOpen === false){
-					if (waveBuffering){
-						addMessage("WAV Recorder - Stopped capturing (Note: this happens when mic. closes or 500KB capture limit is reached ~ 16s)");
-					}
-					waveBuffering = false;
-				}
-			}
-			SepiaVoiceRecorder.onWaveEncoderAudioData = function(waveData){
-				//console.log("SepiaVoiceRecorder -  onWaveEncoderAudioData", waveData);
-				lastRecording = waveData;
-				var targetEle = addMessage("WAV Result:");
-				SepiaVoiceRecorder.addAudioElementToPage(targetEle, waveData, "audio/wav");
-			}
-
-			//--- HTTP ---
-
-			function getServerInfo(){
-				fetch(location.origin + "/settings", {
-					method: "GET"
-				}).then(function(res){
-					if (res.ok){
-						return res.json();
-					}else{
-						throw {"name": "FetchError", "message": res.statusText, "code": res.status};
-					}
-				}).then(function(json){
-					console.log("Fetch RES", json);
-				}).catch(function(err){
-					console.error("Fetch ERROR", err);
-				});
-			}
-			function pingServer(){
-				fetch(location.origin + "/ping")
-				.then(function(res){ return res.json(); })
-				.then(console.log)
-				.catch(console.error);
-			}
-		
-			//--- WebSocket ---
-			
-			var protocol = (location.protocol == "https:")? "wss://" : "ws://";
-			var socketHost = protocol + location.host;
-			var ws;
-
-			var msgId = 0;
-			
-			function openConnection(){
-				ws = new WebSocket(socketHost);
-				
-				ws.onopen = function(){
-					addMessage("Connection OPEN");
-				}
-				
-				ws.onclose = function(){
-					addMessage("Connection CLOSED");
-				}
-				
-				ws.onmessage = function(event){
-					if (event && event.data && typeof event.data == "string"){
-						try {
-							handleSocketMessage(JSON.parse(event.data));
-						}catch(err){
-							addMessage("ERROR - message handler saw invlaid JSON? " + err.name);
-						}
-					}
-				}
-				
-				ws.onerror = function(error){
-					handleSocketError(error);
-				}
-			}
-
-			function closeConnection(){
-				if (ws && ws.readyState == ws.OPEN) ws.close();
-			}
-            			
-			function handleSocketMessage(msgJson){
-				if (msgJson.type == "error"){
-					handleSocketError(msgJson);
-				}else{
-					addMessage(JSON.stringify(msgJson));	//DEBUG
-					if (msgJson.type == "ping"){
-						//TODO: send only after welcome
-						sendJson({type: "pong", msg_id: msgJson.msg_id});
-					}
-				}
-			}
-			function handleSocketError(err){
-				var msg = (err && err.name)? (err.name + " - " + (err.message || "?")) : "?";
-				addMessage("ERROR: " + msg);
-				//Errors are not acceptable :-p - close in any case
-				closeConnection();
-			}
-
-			function sendJson(json){
-				if (ws && ws.readyState == ws.OPEN) ws.send(JSON.stringify(json));
-			}
-			function sendBytes(){
-				if (ws && lastRecording){
-					var orgLength = lastRecording.byteLength;
-					console.log("Sending approx. " + Math.round(orgLength/2/16000) + "s of audio in chunks of 512 (16bit)");
-					var n = Math.floor(orgLength/2/512);
-					var rest = orgLength - (n*2*512);
-					var totalSent = 0;
-					var chunks = [];
-					for (let i=0; i<(orgLength - rest); i+=1024){
-						chunks.push(lastRecording.buffer.slice(i, i + 1024));
-					}
-					chunks.push(lastRecording.buffer.slice(n*1024, n*1024 + rest));
-					var sentN = 0;
-					var completeCallback = function(){
-						console.log("Sent " + totalSent + " of " + orgLength + " bytes");	//DEBUG
-						sendAudioEnd(orgLength);
-					};
-					chunks.forEach(function(b, j){
-						//we don't want to send all at once ...
-						setTimeout(function(){
-							if (ws && ws.readyState == ws.OPEN){
-								ws.send(b);
-								totalSent += b.byteLength;
-							}
-							sentN++;
-							if (sentN >= chunks.length){
-								//console.log("sent " + j, b.byteLength);	//DEBUG
-								completeCallback();
-							}
-						}, j*15);
-					});
-				}
-			}
-			function sendMessage(text){
-				sendJson({
-					"type": "chat",
-					"data": {"text": text},
-					"msg_id": ++msgId
-				});
-			}
-			function sendWelcome(text){
-				var clientId = document.getElementById("clientId");
-				var accessToken = document.getElementById("accessToken");
-				sendJson({
-					"type": "welcome",
-					"data": {"more": "tbd"},
-					"client_id": clientId.value,
-					"access_token": accessToken.value,
-					"msg_id": ++msgId
-				});
-			}
-			function sendAudioEnd(byteLength){
-				sendJson({
-					"type": "audioend",
-					"data": {"byteLength": byteLength},
-					"msg_id": ++msgId
-				});
-			}
-			
-			//--- Messages and animations ---
-
-			var textInputElement = document.getElementById("messageText");
-			if (textInputElement){
-				textInputElement.addEventListener("keyup", function(event){
-					if (event.key === "Enter"){
-						sendTextFromIput(this);
-					}
-				});
-				function sendTextFromIput(input){
-					if (!input) input = textInputElement;
-					sendMessage(input.value);
-					input.value = "";
-				}
-			}
-			
-			var messages = document.getElementById('messages');
-			function addMessage(msg){
-				var message = document.createElement('li');
-				message.textContent = new Date().toLocaleTimeString() + " - " + msg;
-				messages.appendChild(message);
-				messages.scrollTop = messages.scrollHeight;
-				return message;
-			}
-			function clearMessages(){
-				messages.innerHTML = "<li>Log:</li>";
-			}
-			var maxLogHeight = Math.ceil(window.innerHeight - messages.getBoundingClientRect().top - 58);
-			if (maxLogHeight > 150){
-				messages.style.height = maxLogHeight + "px";
-			}
-			
-			var volumeBar = document.getElementById("volumeBar");
-			var volBarPassedCheck = false;
-			var maxVol = 0.02;
-			function setVolume(val){
-				if (!volBarPassedCheck){
-					if (val < volumeThresholds[0] || val > volumeThresholds[1]){
-						volumeBar.style.background = "#f04";	//bad
-					}else{
-						volumeBar.style.background = "#0f4";	//good
-						volBarPassedCheck = true;
-						setTimeout(function(){ volBarPassedCheck = false; }, 2000);
-					}
-				}
-				if (val > maxVol) maxVol = val;
-				volumeBar.style.width = Math.round(val/maxVol * 100) + "%";
-			}
-			setVolume(0);
-
-			var micButton = document.getElementById("micButton");
-			function setMicState(state){
-				micButton.classList.remove("recording", "loading");
-				if (state == "loading"){
-					micButton.classList.add("loading");
-				}else if (state == "recording"){
-					micButton.classList.add("recording");
-				}else{
-					//idle
-				}
-			}
-			setMicState("idle");
-			
-        </script>
     </body>
 </html>

@@ -7,7 +7,7 @@ from launch import get_settings_response
 
 class SettingsRequest(BaseModel):
     """Request to modify server settings"""
-    lang: str = "en"
+    language: str = "de-DE"
 
 class HttpApiEndpoint:
     """HTTP endpoint handler"""

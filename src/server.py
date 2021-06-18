@@ -3,7 +3,7 @@
 from fastapi import FastAPI, Response, WebSocket, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import RedirectResponse
 
 from launch import settings, SERVER_NAME, SERVER_VERSION
 from http_api import HttpApiEndpoint, SettingsRequest
@@ -28,11 +28,7 @@ socket_endpoint = WebsocketApiEndpoint()
 @app.get("/")
 async def get():
     """Redirect to web interface or docs page"""
-    return HTMLResponse("""
-        <p><a href='www/index.html'>Open Web Interface</a></p>
-        <p><a href='docs'>Open Docs</a></p>
-    """)
-    #<script>window.location.href = 'www/index.html';</script>
+    return RedirectResponse(url='www/index.html')
 
 @app.get("/online", status_code=status.HTTP_204_NO_CONTENT)
 async def get_online():
