@@ -17,19 +17,22 @@ class VoskProcessor(EngineInterface):
         """Create Vosk processor"""
         super().__init__(send_message)
         # Options
-        self._sample_rate = float(16000)
-        self._alternatives = int(1)
-        self._continuous_mode = False
-        self._return_words = False
-        self._speaker_detection = (settings.has_speaker_detection
-            and self._alternatives == 0)    # NOTE: this does not work with alternatives
-        language = None
-        phrase_list = None
-        #phrase_list = ["hallo", "kannst du mich hören", "[unk]"]
-        if options is not None:
-            language = options.get("language")
-            phrase_list = options.get("phrases")
-            # NOTE: add more here
+        if not options:
+            options = {}
+        self._sample_rate = options.get("samplerate", float(16000))
+        self._alternatives = options.get("alternatives", int(1))
+        self._continuous_mode = options.get("continuous", False)
+        self._return_words = options.get("words", False)
+        try_speaker_detection = options.get("speaker", False)
+        language = options.get("language")
+        phrase_list = options.get("phrases")
+        # example: phrase_list = ["hallo", "kannst du mich hören", "[unk]"]
+        # NOTE: speaker detection does not work in all configurations
+        if try_speaker_detection:
+            self._speaker_detection = (settings.has_speaker_detection
+                and self._alternatives == 0)
+        else:
+            self._speaker_detection = False
         # Recognizer
         if not language or language not in settings.asr_model_languages:
             asr_model_path = settings.asr_model_paths[0]    #"../models/vosk-model-small-de"

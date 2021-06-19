@@ -240,7 +240,40 @@
 			SepiaVoiceRecorder.waveEncoder.handle.sendToModule({request: {get: "wave"}});
 		}
 	}
+
+	//Decode audio file to audio buffer and then to 16bit PCM mono
+	SepiaVoiceRecorder.decodeAudioToInt16Mono = function(fileUrl, sampleRate, channels, successCallback, errorCallback){
+		if (!sampleRate) sampleRate = 16000;
+		if (!channels) channels = 1;
+		if (!successCallback) successCallback = console.log;
+		if (!errorCallback) errorCallback = console.error;
+		SepiaFW.webAudio.readFileAsBuffer(fileUrl, function(encodedArray){
+			var offlineAudioContext = new OfflineAudioContext(channels, encodedArray.byteLength, sampleRate);
+			offlineAudioContext.decodeAudioData(encodedArray, function(audioBuffer){
+				if (channels > 1){
+					console.error("SepiaVoiceRecorder.decodeAudioFile - Channels > 1 not supported. Result will only contain data of channel 0.");
+				}
+				var isFloat32 = true;
+				SepiaFW.webAudio.encodeWaveBuffer(audioBuffer.getChannelData(0), sampleRate, channels, isFloat32, 
+				function(res){
+					try {
+						var samplesInt16Mono = new Int16Array(res.wav.buffer);
+						successCallback(samplesInt16Mono);
+					}catch(err){
+						errorCallback(err);
+					}
+				}, function(err){
+					errorCallback(err);
+				});
+			}, function(err){
+				errorCallback(err);
+			});
+		}, function(err){
+			errorCallback(err);
+		});
+	}
 	
+	//Add audio data as audio element to page
 	SepiaVoiceRecorder.addAudioElementToPage = function(targetEle, audioData, audioType){
 		var audioEle = document.createElement("audio");
 		audioEle.src = window.URL.createObjectURL((audioData.constructor.name == "Blob")? audioData : (new Blob([audioData], { type: (audioType || "audio/wav") })));

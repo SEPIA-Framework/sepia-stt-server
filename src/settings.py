@@ -65,11 +65,11 @@ class SettingsFile:
                 if key.startswith("path"):
                     self.speaker_model_paths.append(val)
             if len(self.speaker_model_paths) > 0:
-                self.has_speaker_detection = True
+                self.has_speaker_detection_model = True
             else:
-                self.has_speaker_detection = False
+                self.has_speaker_detection_model = False
                 self.speaker_model_paths.append(None)
-                
+
         except configparser.Error as err:
             print("Settings error:", err, file=sys.stderr)
             sys.exit(1)

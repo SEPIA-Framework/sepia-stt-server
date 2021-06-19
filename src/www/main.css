@@ -3,6 +3,7 @@ body {
 	margin: 0;
 	padding: 8px 0;
 	font-size: 15px;
+	position: relative;
 }
 h2 {
 	margin: 24px 0 8px 0;
@@ -38,6 +39,14 @@ button {
 	border: 0;
 	box-shadow: 0px 1px 0px 1px #ccc;
 }
+button.round {
+	border-radius: 15px;
+}
+button.variant-2 {
+	background: #fff;
+    border: 1px solid #999;
+    color: #000;
+}
 @media (hover: hover) and (pointer: fine){
 	button:hover {
 		background: #111;
@@ -62,11 +71,6 @@ h1 > button {
     color: #000;
     font-size: 18px;
     padding: 0;
-}
-h2 > button {
-	background: #fff;
-    border: 1px solid #999;
-    color: #000;
 }
 .page {
 	max-width: 1024px;
@@ -142,6 +146,11 @@ h2 > button {
 	background-color: #f04;
 	background-image: url(sepia-r.svg);
 }
+#recoderInfo.with-button {
+	border: 0;
+	padding: 0;
+	margin: 0;
+}
 #messageText {
 	flex: 1 1 auto;
 }
@@ -151,9 +160,34 @@ h2 > button {
     font-size: 13px;
     border: 1px solid #aaa;
 	overflow: auto;
-    /*max-height: 40vh;*/
+	/*max-height: 40vh;*/
+	min-height: 150px;
 }
 #messages li {
 	list-style: none;
 	margin: 6px 0;
+}
+
+.modal-layer {
+	position: fixed;
+	width: 100%;
+	height: 100%;
+	top: 0;
+	left: 0;
+	background: rgba(0, 0, 0, 0.25);
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	z-index: 100;
+}
+.modal-box {
+	width: 90%;
+    max-width: 320px;
+    height: auto;
+    background: #fff;
+    padding: 16px;
+    border: 1px solid #000;
+	box-shadow: 0px 0px 4px 2px #999;
+	white-space: break-spaces;
+    overflow: auto;
 }

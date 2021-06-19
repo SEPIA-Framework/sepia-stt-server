@@ -7,6 +7,7 @@
 		<title>STT-Server</title>
 		<link rel="shortcut icon" type="image/x-icon" href="favicon.ico">
 		<link rel="stylesheet" href="main.css">
+		<script type="text/javascript" src="common.js"></script>
 		
 		<!-- SEPIA Web Audio Lib -->
 		<script type="text/javascript" src="sepia-web-audio.min.js?v=0.9.5"></script>
@@ -22,8 +23,8 @@
     <body>
 		<div class="page">
 			<h1><button onclick="backToRoot()" style="margin: 0 16px 0 0; border-radius: 15px;">&#8249;</button>SEPIA STT Server - Test Page 1</h1>
-			<p>This is the test page for the SEPIA STT server (V2). Use the microphone to record audio then connect to the server and stream the last recording to get the transcription.</p>
-			<p>More advanced demos can be found here: <a href="https://sepia-framework.github.io/app/index.html" target=_blank>SEPIA Client</a> and here: <a href="https://github.com/SEPIA-Framework/sepia-web-audio" target=_blank>SEPIA Web Audio Lib</a></p>
+			<p>This is the test page for the SEPIA STT server (V2). Use the microphone to record audio or choose a file (URL) then connect to the server and stream the last recording to get a transcription.</p>
+			<p>More demos can be found here: <a href="https://sepia-framework.github.io/app/index.html" target=_blank>SEPIA Client</a> and here: <a href="https://github.com/SEPIA-Framework/sepia-web-audio" target=_blank>SEPIA Web Audio Lib</a></p>
 			<h2>Recorder</h2>
 			<div class="section">
 				<div class="group"><label>Start/Stop:</label><button id="micButton" onclick="toggleMic();"></button></div>
@@ -31,6 +32,11 @@
 				<div class="group"><label>Vol. Meter (green = good):</label><div id="volumeMeter"><div id="volumeBar"></div></div></div>
 			</div>
 			<div class="section">
+				<div class="group">
+					<label>Load audio file (URL):</label>
+					<input id="audioFileUrl" type="text" value="test-audio/easy_counting_en2.ogg" style="width: 256px; max-width: 100%;">
+					<button onclick="loadAudioFile()">LOAD</button>
+				</div>
 				<div class="group"><label>Source Info:</label><span id="recoderInfo" style="flex: 1 1 auto;">-updated during rec.-</span></div>
 			</div>
 			<h2>Connection</h2>
@@ -44,7 +50,7 @@
 					<button onclick="getServerInfo()">RELOAD</button>
 					<label>Language:</label><select id="languageSelect"><option selected>-?-</option></select>
 					<label>Engine:</label><span id="asrEngine">-?-</span>
-					<label>Features:</label><span id="asrFeatures">-?-</span>
+					<label>Features:</label><button id="asrFeaturesBtn" class="round" onclick="showFeaturesModal()">i</button>
 				</div>
 				<div class="group">
 					<label>Tests:</label>
@@ -55,7 +61,7 @@
 					<button onclick="closeConnection()">CLOSE</button>
 				</div>
 			</div>
-			<h2>Messages <button onclick="clearMessages()" style="margin: 0 8px;">CLEAR</button></h2>
+			<h2>Messages <button class="variant-2" onclick="clearMessages()" style="margin: 0 8px;">CLEAR</button></h2>
 			<!--<div class="section">
 				<div class="group" style="flex: 1 1 auto;">
 					<label>Message:</label>
@@ -85,6 +91,23 @@
 			var isRecording = false;
 			var waveBuffering = false;
 			var lastRecording;
+			var sourceInfo = "-?-";
+			var sourceInfoEle = document.getElementById("recoderInfo");
+
+			function loadAudioFile(){
+				var fileUrl = document.getElementById('audioFileUrl').value;
+				SepiaVoiceRecorder.decodeAudioToInt16Mono(fileUrl, undefined, undefined, function(samples){
+					lastRecording = samples;
+					var targetEle = addMessage("WAV Result:");
+					SepiaVoiceRecorder.addAudioElementToPage(targetEle, samples, "audio/wav");
+					sourceInfo = "File: " + fileUrl;
+					sourceInfoEle.innerHTML = "<span>File</span>";
+					sourceInfoEle.classList.remove("with-button");
+				}, function(err){
+					addMessage("ERROR - Failed to load/decode file: " + (err? err.message || err.name || "check log" : "check log"));
+					console.error("Failed to load/decode file", err);
+				});
+			}
 			
 			function toggleMic(){
 				if (!isLoading && !isRecording){
@@ -121,8 +144,10 @@
 			
 			SepiaVoiceRecorder.onProcessorReady = function(info){
 				console.log("SepiaVoiceRecorder -  onProcessorReady", info);
-				document.getElementById("recoderInfo").textContent = "Sample-rate: " + info.targetSampleRate 
-					+ "Hz (rf:" + (info.inputSampleRate/info.targetSampleRate) + ") - Label: " + (info.sourceInfo? info.sourceInfo.label : "");
+				sourceInfo = "Sample-rate: " + info.targetSampleRate 
+					+ "Hz (factor: " + (info.inputSampleRate/info.targetSampleRate) + ")\nDevice Label:\n" + (info.sourceInfo? info.sourceInfo.label : "");
+				sourceInfoEle.classList.add("with-button");
+				sourceInfoEle.innerHTML = "<button class='round' onclick='showSourceInfoModal();' title='" + sourceInfo + "'>i</button>";
 				setMicState("idle");
 				isLoading = false;
 				isRecording = false;
@@ -134,9 +159,11 @@
 				onMicError();
 				addMessage("ERROR - onProcessorInitError: " + err.message);
 				if (location.protocol == "http:" && !location.origin.indexOf("http://localhost") == 0){
-					document.getElementById("recoderInfo").textContent = "Init. ERROR - Likely because of insecure origin (no HTTPS or localhost)";
+					sourceInfoEle.innerHTML = "<span style='color: red;'>Init. ERROR - Likely because of insecure origin (no HTTPS or localhost)</span>";
+					sourceInfoEle.classList.remove("with-button");
 				}else{
-					document.getElementById("recoderInfo").textContent = "Init. ERROR - " + err.message;
+					sourceInfoEle.innerHTML = "<span style='color: red;'>Init. ERROR - " + err.message + "</span>";
+					sourceInfoEle.classList.remove("with-button");
 				}
 			}
 			SepiaVoiceRecorder.onProcessorError = function(err){
@@ -192,6 +219,7 @@
 			//--- Server ---
 
 			var languageCode = "";
+			var availableFeatures = [];
 
 			function handleServerSettings(settings){
 				if (settings.version){
@@ -220,7 +248,10 @@
 					}
 				}
 				if (settings.features){
-					document.getElementById("asrFeatures").textContent = settings.features;
+					availableFeatures = settings.features;
+					document.getElementById("asrFeaturesBtn").title = JSON.stringify(availableFeatures, null, 1);
+				}else{
+					availableFeatures = [];
 				}
 			}
 			function setLanguage(newLang){
@@ -381,7 +412,13 @@
 				sendJson({
 					"type": "welcome",
 					"data": {
-						"language": languageCode
+						"language": languageCode,
+						"samplerate": 16000,
+						"alternatives": 0,
+						"continuous": false,
+						"words": false,
+						"speaker": true,
+						"phrases": ["wann", "tuch", "dreh", "vor", "weiß", "sechs", "seven", "ey", "nein", "[unk]"]
 					},
 					"client_id": clientId.value,
 					"access_token": accessToken.value,
@@ -455,6 +492,18 @@
 				}else{
 					//idle
 				}
+			}
+
+			function showSourceInfoModal(){
+				var modalContent = document.createElement("div");
+				modalContent.textContent = sourceInfo;
+				var mod = createModal(modalContent, "480px", "90%");
+			}
+
+			function showFeaturesModal(){
+				var modalContent = document.createElement("div");
+				modalContent.textContent = JSON.stringify(availableFeatures, null, 1);
+				var mod = createModal(modalContent, "480px", "90%");
 			}
 
 			// ON READY

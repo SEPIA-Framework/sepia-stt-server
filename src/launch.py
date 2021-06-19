@@ -43,10 +43,14 @@ def main():
 def get_settings_response():
     """Get settings for info messages"""
     features = []
-    if settings.has_speaker_detection:
-        features.append("speaker_detection")
+    # Vosk features - NOTE: not all of the models support them
     if settings.asr_engine == "vosk":
         features.append("partial_results")
+        features.append("alternatives")
+        features.append("words_ts")
+        features.append("phrase_list")
+        if settings.has_speaker_detection_model:
+            features.append("speaker_detection")
     return {
         "version": SERVER_VERSION,
         "engine": settings.asr_engine,
