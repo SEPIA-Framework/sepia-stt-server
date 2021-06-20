@@ -50,6 +50,13 @@ class ChunkProcessor():
         if self.processor is not None and self.processor.is_open:
             await self.processor.close()
 
+    def get_options(self):
+        """Get available processor options (optionally with defaults)"""
+        if self.processor:
+            return self.processor.get_options()
+        else:
+            return None
+
 #--- FILE WRITER ---
 
 class WaveFileWriter(EngineInterface):

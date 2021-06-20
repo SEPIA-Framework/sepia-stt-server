@@ -24,23 +24,36 @@ class VoskProcessor(EngineInterface):
         self._continuous_mode = options.get("continuous", False)
         self._return_words = options.get("words", False)
         try_speaker_detection = options.get("speaker", False)
-        language = options.get("language")
-        phrase_list = options.get("phrases")
-        # example: phrase_list = ["hallo", "kannst du mich hören", "[unk]"]
+        self._asr_model_path = options.get("model", None)
+        self._language = options.get("language")
+        self._phrase_list = options.get("phrases")
+        # example: self._phrase_list = ["hallo", "kannst du mich hören", "[unk]"]
         # NOTE: speaker detection does not work in all configurations
         if try_speaker_detection:
-            self._speaker_detection = (settings.has_speaker_detection
+            self._speaker_detection = (settings.has_speaker_detection_model
                 and self._alternatives == 0)
         else:
             self._speaker_detection = False
         # Recognizer
-        if not language or language not in settings.asr_model_languages:
-            asr_model_path = settings.asr_model_paths[0]    #"../models/vosk-model-small-de"
+        if self._asr_model_path:
+            # Reset language because model has higher priority
+            if self._asr_model_path in settings.asr_model_paths:
+                model_index = settings.asr_model_paths.index(self._asr_model_path)
+                self._language = settings.asr_model_languages[model_index]
+            else:
+                self._language = ""
+        elif not self._language or self._language not in settings.asr_model_languages:
+            self._asr_model_path = settings.asr_model_paths[0]
+            self._language = settings.asr_model_languages[0]
         else:
-            asr_model_path = settings.asr_model_paths[settings.asr_model_languages.index(language)]
+            model_index = settings.asr_model_languages.index(self._language)
+            self._asr_model_path = settings.asr_model_paths[model_index]
+        asr_model_path = settings.asr_models_folder + self._asr_model_path
         # Speaker model
-        spk_model_path = settings.speaker_model_paths[0]    #"../models/vosk-model-spk"
+        spk_model_path = settings.speaker_models_folder + settings.speaker_model_paths[0]
         # Make sure paths exist and load models
+        if self._asr_model_path not in settings.asr_model_paths:
+            raise RuntimeError("ASR model path is not defined in available paths")
         if not os.path.exists(asr_model_path):
             raise RuntimeError("ASR model path seems to be wrong")
         if self._speaker_detection and not os.path.exists(spk_model_path):
@@ -49,9 +62,9 @@ class VoskProcessor(EngineInterface):
         if self._speaker_detection:
             self._spk_model = SpkModel(spk_model_path)
         # Use phrase list?
-        if phrase_list and len(phrase_list) > 0:
+        if self._phrase_list and len(self._phrase_list) > 0:
             self._recognizer = KaldiRecognizer(self._model, self._sample_rate,
-                json.dumps(phrase_list, ensure_ascii=False))
+                json.dumps(self._phrase_list, ensure_ascii=False))
         else:
             self._recognizer = KaldiRecognizer(self._model, self._sample_rate)
         self._recognizer.SetMaxAlternatives(self._alternatives)
@@ -94,7 +107,29 @@ class VoskProcessor(EngineInterface):
         await self._finish()
 
     async def close(self):
-        pass
+        """Reset recognizer and remove"""
+        #if self._recognizer:
+            #self._recognizer.Reset()   # this throws an error!? Maye because its closed already?
+            #self._recognizer = None
+
+    def get_options(self):
+        """Get Vosk options for active setup"""
+        active_options = {
+            "language": self._language,
+            "model": self._asr_model_path,
+            "samplerate": self._sample_rate,
+            "alternatives": self._alternatives,
+            "continuous": self._continuous_mode,
+            "words": self._return_words,
+            "speaker": self._speaker_detection
+        }
+        if self._phrase_list and len(self._phrase_list) > 0:
+            # NOTE: this can be very large, for now we use a placeholder
+            active_options["phrases"] = []
+            #active_options["phrases"] = self._phrase_list
+        else:
+            active_options["phrases"] = []
+        return active_options
 
     async def _handle_partial_result(self, result):
         """Handle a partial result"""

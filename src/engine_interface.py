@@ -15,6 +15,9 @@ class EngineInterface():
         """Block new process requests, wait for last process to finish and send result"""
     async def close(self):
         """Close and clean up"""
+    def get_options(self):
+        """Return possible options as object (optionally) with defaults"""
+        return {}
 
     async def send_transcript(self,
         transcript, is_final = False, confidence = -1, features = None, alternatives = None):

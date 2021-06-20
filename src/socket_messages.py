@@ -58,9 +58,12 @@ class SocketResponseMessage(SocketMessage):
 
 class SocketWelcomeMessage(SocketMessage):
     """Welcome message (sent after authentication)"""
-    def __init__(self, msg_id):
+    def __init__(self, msg_id, processor_options = None):
         super().__init__("welcome", msg_id)
-        self.set_field("info", get_settings_response())
+        info = get_settings_response()
+        if processor_options:
+            info["options"] = processor_options
+        self.set_field("info", info)
 
 class SocketTranscriptMessage(SocketMessage):
     """Result message to be sent for example when ASR engine transcribed audio etc."""

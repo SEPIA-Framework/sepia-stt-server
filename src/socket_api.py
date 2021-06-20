@@ -18,15 +18,17 @@ class SocketManager:
         """WebSocket onopen event"""
         await user.socket.accept()
         self.active_connections[user.session_id] = user
-        # tell all clients that user connected - TODO: deactivate (currently kept for debugging)
-        await self.broadcast_to_all(SocketBroadcastMessage("chat", {"text": (f"User '{user.session_id}' connected")}))
+        # tell all clients that user connected
+        #await self.broadcast_to_all(SocketBroadcastMessage(
+        #    "chat", {"text": (f"User '{user.session_id}' connected")}))
 
     async def onclose(self, user: SocketUser):
         """WebSocket onclose event"""
         if self.active_connections[user.session_id] is not None:
             del self.active_connections[user.session_id]
-        # tell all clients that user left - TODO: deactivate (currently kept for debugging)
-        await self.broadcast_to_all(SocketBroadcastMessage("chat", {"text": (f"User '{user.session_id}' left")}))
+        # tell all clients that user left
+        #await self.broadcast_to_all(SocketBroadcastMessage(
+        #    "chat", {"text": (f"User '{user.session_id}' left")}))
         await user.on_closed()
         #print("CLIENT CLOSED")
 
@@ -77,15 +79,25 @@ class WebsocketApiEndpoint:
 
 async def on_json_message(socket_message: SocketJsonInputMessage, user: SocketUser):
     """Handle messages in JSON format"""
+    #
+    # NOTE: we could implement support for Twilio style message format (binary over JSON object):
+    # https://www.twilio.com/docs/voice/tutorials/consume-real-time-media-stream-using-websockets-python-and-flask#
 
     # handle welcome event
     if socket_message.type == "welcome":
         # Note that client was active
         user.on_client_activity(True)
 
+        if user.is_authenticated and user.processor:
+            # User was already auth. and processor was created - for safety we block this atm
+            await user.send_message(SocketErrorMessage(418,
+                "NotPossible", "Multiple 'welcome' messages in one session are not supported."))
+            return
+
         await user.authenticate(socket_message)
         if user.is_authenticated:
-            welcome_message = SocketWelcomeMessage(socket_message.msg_id)
+            welcome_message = SocketWelcomeMessage(
+                socket_message.msg_id, user.processor.get_options())
             await user.send_message(welcome_message)
         else:
             await user.send_message(SocketErrorMessage(401,
@@ -121,4 +133,3 @@ async def on_binary_message(binary_data: bytes, user: SocketUser):
 
     # Process
     await user.process_audio_chunks(binary_data)
-    #await user.send_message(SocketBroadcastMessage("info", {"text": (f"User '{user.session_id}' sent bytes")}))

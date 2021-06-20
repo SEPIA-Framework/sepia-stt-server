@@ -58,7 +58,7 @@ class SocketUser:
         # Create processor
         if self.is_authenticated:
             try:
-                self.processor = ChunkProcessor(processor_name=None, 
+                self.processor = ChunkProcessor(processor_name=None,
                     send_message=self.send_message, options=processor_options)
             except RuntimeError:
                 logger.exception("ChunkProcessor - Failed to create processor")
@@ -82,7 +82,7 @@ class SocketUser:
         # NOTE: we count only data messages as life sign (why else would the client stay?)
         if is_binary_or_welcome:
             self.last_alive_sign = int(time.time())
-    
+
     async def on_closed(self):
         """Connection was closed"""
         self.is_alive = False
