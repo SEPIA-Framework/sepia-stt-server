@@ -181,13 +181,19 @@ h1 > button {
 	z-index: 100;
 }
 .modal-box {
-	width: 90%;
+	width: 85%;
     max-width: 320px;
     height: auto;
     background: #fff;
     padding: 16px;
     border: 1px solid #000;
-	box-shadow: 0px 0px 4px 2px #999;
+	box-shadow: 0px 0px 4px 2px rgba(0, 0, 0, 0.25);
 	white-space: break-spaces;
     overflow: auto;
+}
+.modal-box textarea {
+	box-sizing: border-box;
+    width: 100%;
+	height: 200px;
+	resize: vertical;
 }

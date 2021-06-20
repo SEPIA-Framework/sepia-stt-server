@@ -16,8 +16,10 @@ function createModal(content, width, maxWidth){
 	modal.closeModal = function(){
 		layer.parentNode.removeChild(layer);
 	}
-	layer.addEventListener("click", function(){
-		modal.closeModal();
+	layer.addEventListener("click", function(e){
+		if (e.target == layer){
+			modal.closeModal();
+		}
 	});
 	return modal;
 }

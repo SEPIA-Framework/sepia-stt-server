@@ -10,7 +10,7 @@
 		<script type="text/javascript" src="common.js"></script>
 		
 		<!-- SEPIA Web Audio Lib -->
-		<script type="text/javascript" src="sepia-web-audio.min.js?v=0.9.5"></script>
+		<script type="text/javascript" src="sepia-web-audio.min.js?v=0.9.6"></script>
 		<script type="text/javascript" src="sepia-recorder.js"></script>
 		<script>
 			//set correct modules folder
@@ -22,8 +22,8 @@
     </head>
     <body>
 		<div class="page">
-			<h1><button onclick="backToRoot()" style="margin: 0 16px 0 0; border-radius: 15px;">&#8249;</button>SEPIA STT Server - Test Page 1</h1>
-			<p>This is the test page for the SEPIA STT server (V2). Use the microphone to record audio or choose a file (URL) then connect to the server and stream the last recording to get a transcription.</p>
+			<h1><button onclick="backToRoot()" style="margin: 0 16px 0 0; border-radius: 15px; font-size: 14px;">&#x2630;</button>SEPIA STT Server - Developer Test Page</h1>
+			<p>This is the test page intended for <b>developers</b> using the SEPIA STT server (V2). Use the microphone to record audio or choose a file (URL) then connect to the server, send the 'welcome' event and stream the last recording to get a transcription.</p>
 			<p>More demos can be found here: <a href="https://sepia-framework.github.io/app/index.html" target=_blank>SEPIA Client</a> and here: <a href="https://github.com/SEPIA-Framework/sepia-web-audio" target=_blank>SEPIA Web Audio Lib</a></p>
 			<h2>Recorder</h2>
 			<div class="section">
@@ -41,19 +41,13 @@
 			</div>
 			<h2>Connection</h2>
 			<div class="section">
+				<div class="group"><label>Server:</label><input type="text" id="serverUrl" autocomplete="off" value=""/></div>
 				<div class="group"><label>Client-ID:</label><input type="text" id="clientId" autocomplete="off" value="any"/></div>
 				<div class="group"><label>Access Token:</label><input type="text" id="accessToken" autocomplete="off" value="test1234"/></div>
 			</div>
 			<div class="section">
+				<label>Tests &#x2615;:</label>
 				<div class="group">
-					<label>Settings:</label>
-					<button onclick="getServerInfo()">RELOAD</button>
-					<label>Language:</label><select id="languageSelect"><option selected>-?-</option></select>
-					<label>Engine:</label><span id="asrEngine">-?-</span>
-					<label>Features:</label><button id="asrFeaturesBtn" class="round" onclick="showFeaturesModal()">i</button>
-				</div>
-				<div class="group">
-					<label>Tests:</label>
 					<button onclick="openConnection()">OPEN</button>
 					<button onclick="sendWelcome()">SEND WELCOME</button>
 					<button onclick="sendMessage('test');">TEST MESSAGE</button>
@@ -61,7 +55,20 @@
 					<button onclick="closeConnection()">CLOSE</button>
 				</div>
 			</div>
-			<h2>Messages <button class="variant-2" onclick="clearMessages()" style="margin: 0 8px;">CLEAR</button></h2>
+			<h2>Engine Settings <button class="variant-2" onclick="getServerInfo()" style="margin: 0 0 0 16px;">RELOAD</button></h2>
+			<div class="section">
+				<div class="group"><label>Engine:</label><span id="asrEngine">-?-</span></div>
+				<div class="group"><label>Language:</label><select id="languageSelect"><option selected>-?-</option></select></div>
+				<div class="group"><label>Features:</label><button id="asrFeaturesBtn" class="round" onclick="showFeaturesModal()">i</button></div>
+				<div class="group"><label>Options:</label><button id="asrOptionsBtn" class="round" onclick="showOptionsModal()">&#x270E;</button><!--&#x2699;--></div>
+			</div>
+			<div class="section">
+				<div class="group" style="flex: 1 0 auto;">
+					<label>Phrases:</label><input id="phraseList" style="flex: 1 0 auto;" type="text" autocomplete="off" value="" 
+						placeholder="A list of phrases or words to recognize (if supported by model)"/>
+				</div>
+			</div>
+			<h2>Messages <button class="variant-2" onclick="clearMessages()" style="margin: 0 0 0 16px;">CLEAR</button></h2>
 			<!--<div class="section">
 				<div class="group" style="flex: 1 1 auto;">
 					<label>Message:</label>
@@ -79,7 +86,7 @@
 			//--- Navigation ---
 
 			function backToRoot(){
-				location.href = location.origin;
+				location.href = "index.html";
 			}
 
 			//--- Recorder ---
@@ -96,10 +103,11 @@
 
 			function loadAudioFile(){
 				var fileUrl = document.getElementById('audioFileUrl').value;
-				SepiaVoiceRecorder.decodeAudioToInt16Mono(fileUrl, undefined, undefined, function(samples){
+				SepiaVoiceRecorder.decodeAudioFileToInt16Mono(fileUrl, undefined, undefined, function(samples){
 					lastRecording = samples;
 					var targetEle = addMessage("WAV Result:");
 					SepiaVoiceRecorder.addAudioElementToPage(targetEle, samples, "audio/wav");
+					addMessage(undefined);
 					sourceInfo = "File: " + fileUrl;
 					sourceInfoEle.innerHTML = "<span>File</span>";
 					sourceInfoEle.classList.remove("with-button");
@@ -214,12 +222,18 @@
 				lastRecording = waveData;
 				var targetEle = addMessage("WAV Result:");
 				SepiaVoiceRecorder.addAudioElementToPage(targetEle, waveData, "audio/wav");
+				addMessage(undefined);
 			}
 
 			//--- Server ---
 
+			var serverUrl = document.getElementById("serverUrl");
+			serverUrl.value = location.origin;
+
 			var languageCode = "";
 			var availableFeatures = [];
+			var activeOptions = {};
+			var phrases = [];
 
 			function handleServerSettings(settings){
 				if (settings.version){
@@ -230,12 +244,12 @@
 					document.getElementById("asrEngine").textContent = settings.engine;
 				}
 				if (settings.languages){
-					languageSelector.innerHTML = "";
+					languageSelector.innerHTML = "<option value=''>Default/Model</option>";
 					settings.languages.forEach(function(lc, i){
 						var opt = document.createElement("option");
 						opt.textContent = lc;
 						opt.value = lc;
-						if (i=0){
+						if (i == 0){
 							opt.selected = true;
 							languageCode = lc;
 						}
@@ -254,20 +268,26 @@
 					availableFeatures = [];
 				}
 			}
-			function setLanguage(newLang){
+			function setLanguage(newLang, resetModel){
+				//NOTE: this assumes 'language' and 'model' are always available options!
 				languageCode = newLang;
+				languageSelector.value = newLang;
+				activeOptions.language = languageCode;
+				if (resetModel){
+					delete activeOptions.model; //since model has higher prio we remove that
+				}
 			}
 
 			var languageSelector = document.getElementById("languageSelect");
 			languageSelector.addEventListener("change", function(e){
-				setLanguage(languageSelector.value);
+				setLanguage(languageSelector.value, true);
 			});
 
 			//--- HTTP ---
 
 			function getServerInfo(){
 				addMessage("INFO - Loading server settings...");
-				fetch(location.origin + "/settings", {
+				fetch(serverUrl.value + "/settings", {
 					method: "GET"
 				}).then(function(res){
 					if (res.ok){
@@ -285,7 +305,7 @@
 				});
 			}
 			function pingServer(successCallback, errorCallback){
-				fetch(location.origin + "/ping")
+				fetch(serverUrl.value + "/ping")
 				.then(function(res){ return res.json(); })
 				.then(function(json){
 					console.log("Ping", json);
@@ -299,13 +319,18 @@
 		
 			//--- WebSocket ---
 			
-			var protocol = (location.protocol == "https:")? "wss://" : "ws://";
-			var socketHost = protocol + location.host;
+			var protocol = (serverUrl.value.indexOf("https:") == 0)? "wss:" : "ws:";
+			var socketHost = serverUrl.value.replace(/^(https:|http:)/, protocol);
 			var ws;
 
 			var msgId = 0;
 			
 			function openConnection(){
+				if (ws && ws.readyState == ws.OPEN){
+					addMessage("Connection already OPEN");
+					return;
+				}
+
 				ws = new WebSocket(socketHost);
 				
 				ws.onopen = function(){
@@ -343,6 +368,13 @@
 					if (msgJson.type == "ping"){
 						//TODO: send only after welcome
 						sendJson({type: "pong", msg_id: msgJson.msg_id});
+					}else if (msgJson.type == "welcome"){
+						activeOptions = msgJson.info? msgJson.info.options : {};
+						//overwrite custom settings
+						setLanguage(activeOptions.language || "", false);
+						if (activeOptions.phrases && phrases && phrases.length){
+							activeOptions.phrases = phrases;
+						}
 					}
 				}
 			}
@@ -411,15 +443,7 @@
 				var accessToken = document.getElementById("accessToken");
 				sendJson({
 					"type": "welcome",
-					"data": {
-						"language": languageCode,
-						"samplerate": 16000,
-						"alternatives": 0,
-						"continuous": false,
-						"words": false,
-						"speaker": true,
-						"phrases": ["wann", "tuch", "dreh", "vor", "weiß", "sechs", "seven", "ey", "nein", "[unk]"]
-					},
+					"data": activeOptions,
 					"client_id": clientId.value,
 					"access_token": accessToken.value,
 					"msg_id": ++msgId
@@ -451,9 +475,12 @@
 			
 			var messages = document.getElementById('messages');
 			function addMessage(msg){
-				var message = document.createElement('li');
+				var message;
+				message = document.createElement('li');
 				message.textContent = new Date().toLocaleTimeString() + " - " + msg;
-				messages.appendChild(message);
+				if (msg){
+					messages.appendChild(message);
+				}
 				messages.scrollTop = messages.scrollHeight;
 				return message;
 			}
@@ -494,16 +521,67 @@
 				}
 			}
 
+			var phraseListInput = document.getElementById("phraseList");
+			if (phraseListInput){
+				phraseListInput.title = 'Enter phrases or words seperated by comma. Optionally add "[unk]".';
+				phraseListInput.addEventListener("blur", function(){
+					phrases = phraseListInput.value.split(/\s*(?:,|;|\.$|\. )\s*/g);
+					console.log("phrases", phrases);
+					//add to options?
+					if (activeOptions.phrases && phrases && phrases.length){
+						activeOptions.phrases = phrases;
+					}
+				});
+			}
+
 			function showSourceInfoModal(){
 				var modalContent = document.createElement("div");
 				modalContent.textContent = sourceInfo;
-				var mod = createModal(modalContent, "480px", "90%");
+				var mod = createModal(modalContent, "480px", "85%");
 			}
 
 			function showFeaturesModal(){
 				var modalContent = document.createElement("div");
 				modalContent.textContent = JSON.stringify(availableFeatures, null, 1);
-				var mod = createModal(modalContent, "480px", "90%");
+				var mod = createModal(modalContent, "480px", "85%");
+			}
+			function showOptionsModal(){
+				var modalContent = document.createElement("div");
+				modalContent.innerHTML = "<p>NOTE: Engine options will be updated during 'welcome' event</p>";
+				var optionsBox = document.createElement("textarea");
+				optionsBox.textContent = JSON.stringify(activeOptions, null, 1);
+				/* Vosk example:
+				{
+					"language": languageCode,
+					"samplerate": 16000,
+					"alternatives": 0,
+					"continuous": false,
+					"words": false,
+					"speaker": true,
+					"phrases": ["wann", "tuch", "dreh", "vor", "weiß", "sechs", "seven", "ey", "nein", "[unk]"]
+				}
+				*/
+				modalContent.appendChild(optionsBox);
+				var storeBtn = document.createElement("button");
+				storeBtn.textContent = "Store";
+				storeBtn.onclick = function(){
+					try {
+						activeOptions = JSON.parse(optionsBox.value);
+						mod.closeModal();
+					}catch (error){
+						storeBtn.textContent = "Store (Check JSON)";
+						storeBtn.style.background = "#f05";
+						storeBtn.style.color = "#fff";
+					}
+				};
+				var cancelBtn = document.createElement("button");
+				cancelBtn.textContent = "Cancel";
+				cancelBtn.onclick = function(){
+					mod.closeModal();
+				};
+				modalContent.appendChild(storeBtn);
+				modalContent.appendChild(cancelBtn);
+				var mod = createModal(modalContent, "480px", "85%");
 			}
 
 			// ON READY
