@@ -54,3 +54,5 @@ async def post_settings(req: SettingsRequest, response: Response):
 async def websocket_endpoint(socket: WebSocket):
     """Endpoint to handle WebSocket connections"""
     await socket_endpoint.handle(socket)
+
+print(f"SEPIA STT Server - Server running at: {settings.host}:{settings.port}")

@@ -490,6 +490,8 @@
 			var maxLogHeight = Math.ceil(window.innerHeight - messages.getBoundingClientRect().top - 58);
 			if (maxLogHeight > 150){
 				messages.style.height = maxLogHeight + "px";
+			}else{
+				messages.style.height = "150px";
 			}
 			
 			var volumeBar = document.getElementById("volumeBar");
