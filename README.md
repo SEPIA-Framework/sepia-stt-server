@@ -1,14 +1,12 @@
 # SEPIA Speech-To-Text Server
 
-NOTE: This is **V2** of the STT Server, for V1 please see the [LEGACY SERVER](legacy-server) folder.  
-  
 SEPIA Speech-To-Text (STT) Server is a WebSocket based, full-duplex Python server for realtime automatic speech recognition (ASR) supporting multiple open-source ASR engines.
 It can receive a stream of audio chunks via the secure WebSocket connection and return transcribed text almost immediately as partial and final results.  
   
-One goal of this project is to offer a standardized, secure, realtime interface for all the great open-source ASR tools out there.  
-The server works on all major platforms including single-board devices like Raspberry Pi (4).
-
-The REST interface of the server allows to switch the ASR model on-the-fly.
+One goal of this project is to offer a **standardized, secure, realtime interface** for all the great open-source ASR tools out there.
+The server works on all major platforms including single-board devices like Raspberry Pi (4).  
+  
+NOTE: This is **V2** of the STT Server, for V1 please see the [LEGACY SERVER](legacy-server) folder.
 
 ## Features
 
@@ -23,3 +21,4 @@ The REST interface of the server allows to switch the ASR model on-the-fly.
 
 ## Quick-Start
 
+Coming soon ...
