@@ -70,7 +70,8 @@ class SocketUser:
 
     async def send_message(self, message: SocketMessage):
         """Send socket message to user"""
-        await self.socket.send_json(message.json)
+        if self.is_alive:
+            await self.socket.send_json(message.json)
 
     async def ping_client(self):
         """Send alive ping to client (and expect pong answer)"""

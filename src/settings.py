@@ -15,6 +15,7 @@ class SettingsFile:
     def __init__(self, file_path):
         env_settings_path = os.getenv("SEPIA_STT_SETTINGS")
         if env_settings_path is not None:
+            # add ENV settings path with high priority
             settings_paths = SETTINGS_PATHS + [env_settings_path]
         settings_paths = list(SETTINGS_PATHS)
         if file_path is not None:

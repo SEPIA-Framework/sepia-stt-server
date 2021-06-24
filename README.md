@@ -21,4 +21,36 @@ NOTE: This is **V2** of the STT Server, for V1 please see the [LEGACY SERVER](le
 
 ## Quick-Start
 
-Coming soon ...
+The easiest way to get started is to use a Docker container for your platform:
+- x86 64Bit Systeme (Desktop PCs, Linux server etc.): `docker pull sepia/stt-server:v2_amd64_beta`
+- ARM 32Bit (Raspberry Pi 4 32Bit OS): `docker pull sepia/stt-server:v2_armv7l_beta`
+- ARM 64Bit (RPi 4 64Bit, Jetson Nano(?)): `docker pull sepia/stt-server:v2_aarch64_beta`
+
+After the download is complete simply start the container, for example via:  
+```
+sudo docker run --name=sepia-stt -p 20741:20741 -it sepia/stt-server:[my-tag]
+```
+
+To test the server visit: `http://localhost:20741` if you are on the same machine or `http://[server-IP]:20741` if you are in the same network.
+
+## Server Settings
+
+ENV variables:
+- `SEPIA_STT_SETTINGS`: Overwrites default path to settings file
+
+Commandline options:
+- Use `python -m launch -h` to see all commandline options
+- Use `python -m launch -s [path-to-file]` to use custom settings
+
+NOTE: Commandline options always overrule the settings file but in most scenarios it makes sense to simply create a new settings file and use the `-s` flag.
+
+## Integrated ASR Engines
+
+- [Vosk](https://github.com/alphacep/vosk-api) - Status: Included, referenz integration.
+- [Coqui](https://github.com/coqui-ai/STT) - Status: Under construction.
+- [Scribosermo](https://gitlab.com/Jaco-Assistant/Scribosermo) - Status: Help wanted ^^.
+- If you want to see a different engine please create a new [issue](https://github.com/SEPIA-Framework/sepia-stt-server/issues). Pull requests are welcome ;-)
+
+## Develop your own client
+
+See the separate [API doc](API.md) file or check out the [test page](www/test.html).
