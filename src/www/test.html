@@ -24,7 +24,7 @@
 		<div class="page">
 			<h1><button onclick="backToRoot()" style="margin: 0 16px 0 0; border-radius: 15px; font-size: 14px;">&#x2630;</button>SEPIA STT Server - Developer Test Page</h1>
 			<p>This is the test page intended for <b>developers</b> using the SEPIA STT server (V2). Use the microphone to record audio or choose a file (URL) then connect to the server, send the 'welcome' event and stream the last recording to get a transcription.</p>
-			<p>More demos can be found here: <a href="https://sepia-framework.github.io/app/index.html" target=_blank>SEPIA Client</a> and here: <a href="https://github.com/SEPIA-Framework/sepia-web-audio" target=_blank>SEPIA Web Audio Lib</a></p>
+			<p>More demos can be found here (coming soon): <a href="https://sepia-framework.github.io/app/index.html" target=_blank>SEPIA Client</a> and here: <a href="https://github.com/SEPIA-Framework/sepia-web-audio" target=_blank>SEPIA Web Audio Lib</a></p>
 			<h2>Recorder</h2>
 			<div class="section">
 				<div class="group"><label>Start/Stop:</label><button id="micButton" onclick="toggleMic();"></button></div>
@@ -59,6 +59,7 @@
 			<div class="section">
 				<div class="group"><label>Engine:</label><span id="asrEngine">-?-</span></div>
 				<div class="group"><label>Language:</label><select id="languageSelect"><option selected>-?-</option></select></div>
+				<div class="group"><label>Model:</label><select id="modelSelect"><option selected>-?-</option></select></div>
 				<div class="group"><label>Features:</label><button id="asrFeaturesBtn" class="round" onclick="showFeaturesModal()">i</button></div>
 				<div class="group"><label>Options:</label><button id="asrOptionsBtn" class="round" onclick="showOptionsModal()">&#x270E;</button><!--&#x2699;--></div>
 			</div>
@@ -231,6 +232,7 @@
 			serverUrl.value = location.origin;
 
 			var languageCode = "";
+			var asrModel = "";
 			var availableFeatures = [];
 			var activeOptions = {};
 			var phrases = [];
@@ -244,22 +246,14 @@
 					document.getElementById("asrEngine").textContent = settings.engine;
 				}
 				if (settings.languages){
-					languageSelector.innerHTML = "<option value=''>Default/Model</option>";
-					settings.languages.forEach(function(lc, i){
-						var opt = document.createElement("option");
-						opt.textContent = lc;
-						opt.value = lc;
-						if (i == 0){
-							opt.selected = true;
-							languageCode = lc;
-						}
-						languageSelector.appendChild(opt);
-					});
+					buildSelectOptions(languageSelector, settings.languages, "Automatic");
+					languageCode = languageSelector.value;
 					addMessage("INFO - Available ASR languages: " + JSON.stringify(settings.languages, null, 2));
-					if (settings.models){
-						languageSelector.title = JSON.stringify(settings.models, null, 2);
-						addMessage("INFO - Available ASR models: " + JSON.stringify(settings.models, null, 2));
-					}
+				}
+				if (settings.models){
+					buildSelectOptions(modelSelector, settings.models, "Automatic");
+					asrModel = modelSelector.value;
+					addMessage("INFO - Available ASR models: " + JSON.stringify(settings.models, null, 2));
 				}
 				if (settings.features){
 					availableFeatures = settings.features;
@@ -275,12 +269,27 @@
 				activeOptions.language = languageCode;
 				if (resetModel){
 					delete activeOptions.model; //since model has higher prio we remove that
+					modelSelector.value = "";
+				}
+			}
+			function setModel(newModel, resetLanguage){
+				//NOTE: this assumes 'language' and 'model' are always available options!
+				asrModel = newModel;
+				modelSelector.value = newModel;
+				activeOptions.model = asrModel;
+				if (resetLanguage){
+					delete activeOptions.language; //since model has higher prio we remove that
+					languageSelector.value = "";
 				}
 			}
 
 			var languageSelector = document.getElementById("languageSelect");
 			languageSelector.addEventListener("change", function(e){
 				setLanguage(languageSelector.value, true);
+			});
+			var modelSelector = document.getElementById("modelSelect");
+			modelSelector.addEventListener("change", function(e){
+				setModel(modelSelector.value, true);
 			});
 
 			//--- HTTP ---
@@ -372,6 +381,7 @@
 						activeOptions = msgJson.info? msgJson.info.options : {};
 						//overwrite custom settings
 						setLanguage(activeOptions.language || "", false);
+						setModel(activeOptions.model || "", false);
 						if (activeOptions.phrases && phrases && phrases.length){
 							activeOptions.phrases = phrases;
 						}
@@ -584,6 +594,19 @@
 				modalContent.appendChild(storeBtn);
 				modalContent.appendChild(cancelBtn);
 				var mod = createModal(modalContent, "480px", "85%");
+			}
+
+			function buildSelectOptions(selector, optArray, defaultName){
+				selector.innerHTML = "<option value=''>" + defaultName + "</option>";
+				optArray.forEach(function(val, i){
+					var opt = document.createElement("option");
+					opt.textContent = val;
+					opt.value = val;
+					if (i == 0){
+						opt.selected = true;
+					}
+					selector.appendChild(opt);
+				});
 			}
 
 			// ON READY
