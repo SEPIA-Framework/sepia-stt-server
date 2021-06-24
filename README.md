@@ -17,7 +17,7 @@ NOTE: This is **V2** of the STT Server, for V1 please see the [LEGACY SERVER](le
 * User authentication via simple common token or individual tokens for multiple users
 * Docker containers with support for all major platform architectures: x86 64Bit (amd64), ARM 32Bit (armv7l) and ARM 64Bit (aarch64)
 * Fast enough to run even on Raspberry Pi 4 (2GB) in realtime (depending on engine and model configuration)
-* Compatible to [SEPIA Framework client](https://github.com/SEPIA-Framework/sepia-html-client-app)
+* Compatible to [SEPIA Framework client](https://github.com/SEPIA-Framework/sepia-html-client-app) (v0.24+)
 
 ## Quick-Start
 
@@ -28,7 +28,7 @@ The easiest way to get started is to use a Docker container for your platform:
 
 After the download is complete simply start the container, for example via:  
 ```
-sudo docker run --name=sepia-stt -p 20741:20741 -it sepia/stt-server:[my-tag]
+sudo docker run --name=sepia-stt -p 20741:20741 -it sepia/stt-server:[platform-tag]
 ```
 
 To test the server visit: `http://localhost:20741` if you are on the same machine or `http://[server-IP]:20741` if you are in the same network.
@@ -53,4 +53,4 @@ NOTE: Commandline options always overrule the settings file but in most scenario
 
 ## Develop your own client
 
-See the separate [API doc](API.md) file or check out the [test page](www/test.html).
+See the separate [API doc](API.md) file or check out the [test page](src/www/test.html).
