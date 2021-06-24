@@ -19,6 +19,13 @@ NOTE: This is **V2** of the STT Server, for V1 please see the [LEGACY SERVER](le
 * Fast enough to run even on Raspberry Pi 4 (2GB) in realtime (depending on engine and model configuration)
 * Compatible to [SEPIA Framework client](https://github.com/SEPIA-Framework/sepia-html-client-app) (v0.24+)
 
+## Integrated ASR Engines
+
+- [Vosk](https://github.com/alphacep/vosk-api) - Status: Included (with tiny EN and DE model)
+- [Coqui](https://github.com/coqui-ai/STT) - Status: Under construction.
+- [Scribosermo](https://gitlab.com/Jaco-Assistant/Scribosermo) - Status: Help wanted ^^.
+- If you want to see a different engine please create a new [issue](https://github.com/SEPIA-Framework/sepia-stt-server/issues). Pull requests are welcome ;-)
+
 ## Quick-Start
 
 The easiest way to get started is to use a Docker container for your platform:
@@ -35,6 +42,8 @@ To test the server visit: `http://localhost:20741` if you are on the same machin
 
 ## Server Settings
 
+Most of the settings can be handled easily via the [server.conf settings file](src/server.conf). Please check out the file to see whats possible.
+
 ENV variables:
 - `SEPIA_STT_SETTINGS`: Overwrites default path to settings file
 
@@ -44,13 +53,12 @@ Commandline options:
 
 NOTE: Commandline options always overrule the settings file but in most scenarios it makes sense to simply create a new settings file and use the `-s` flag.
 
-## Integrated ASR Engines
+## ASR Engine Settings
 
-- [Vosk](https://github.com/alphacep/vosk-api) - Status: Included, referenz integration.
-- [Coqui](https://github.com/coqui-ai/STT) - Status: Under construction.
-- [Scribosermo](https://gitlab.com/Jaco-Assistant/Scribosermo) - Status: Help wanted ^^.
-- If you want to see a different engine please create a new [issue](https://github.com/SEPIA-Framework/sepia-stt-server/issues). Pull requests are welcome ;-)
+As soon as the server is running you can check the current setup via the HTTP REST interface: `http://localhost:20741//settings` or the test page (see quick-start above).  
+  
+Individual settings for the active engine can be changed on-the-fly during the WebSocket 'welcome' event. See the [API docs](API.md) file for more info or check out the 'Engine Settings' section of the test page.
 
 ## Develop your own client
 
-See the separate [API doc](API.md) file or check out the [test page](src/www/test.html).
+See the separate [API docs](API.md) file or check out the [test page](src/www/test.html) source-code.
