@@ -5,6 +5,7 @@ import asyncio
 
 from uvicorn.config import logger
 from fastapi import WebSocket
+from starlette.websockets import WebSocketState
 
 from launch import settings
 from socket_messages import (SocketJsonInputMessage,
@@ -70,7 +71,7 @@ class SocketUser:
 
     async def send_message(self, message: SocketMessage):
         """Send socket message to user"""
-        if self.is_alive:
+        if self.socket.client_state == WebSocketState.CONNECTED:
             await self.socket.send_json(message.json)
 
     async def ping_client(self):
@@ -102,7 +103,8 @@ class SocketUser:
                 await self.send_message(SocketErrorMessage(408,
                     "TimeoutMessage", "Client was inactive for too long."))
                 self.is_alive = False
-                await self.socket.close(1013)
+                if self.socket.client_state == WebSocketState.CONNECTED:
+                    await self.socket.close(1013)
                 #self.task.cancel()
             elif self.is_alive:
                 await self.ping_client()
