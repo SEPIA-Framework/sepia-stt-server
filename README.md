@@ -13,7 +13,7 @@ NOTE: This is **V2** of the STT Server, for V1 please see the [LEGACY SERVER](le
 * WebSocket server (Python Fast-API) that can receive audio streams and send transcribed text at the same time
 * Modular architecture to support multiple ASR engines like Vosk (reference implementation), Coqui, Deepspeech, Scribosermo, ...
 * Standardized API for all engines and support for individual engine features (speaker identification, grammar, confidence score, word timestamps, alternative results, etc.)
-* On-the-fly server and engine configuration via HTTP REST API and WebSocket 'welcome' event
+* On-the-fly server and engine configuration via HTTP REST API and WebSocket 'welcome' event (including custom grammar, if supported by engine and model)
 * User authentication via simple common token or individual tokens for multiple users
 * Docker containers with support for all major platform architectures: x86 64Bit (amd64), ARM 32Bit (armv7l) and ARM 64Bit (aarch64)
 * Fast enough to run even on Raspberry Pi 4 (2GB) in realtime (depending on engine and model configuration)
@@ -62,3 +62,10 @@ Individual settings for the active engine can be changed on-the-fly during the W
 ## Develop your own client
 
 See the separate [API docs](API.md) file or check out the [test page](src/www/test.html) source-code.
+
+## Adapt ASR models
+
+Open-source ASR has improved a lot in the last years but sometimes it makes sense to adapt the models to your own, specific use-case and vocabulary to improve accuracy.
+The language model adaptation process will be integrated into the server in the near future. Until then please check out the following links:
+
+- Language model adaptation made easy with [kaldi-adapt-lm](https://github.com/fquirin/kaldi-adapt-lm)

@@ -51,8 +51,8 @@ RUN echo "Installing Vosk ..." && \
 		pip3 install vosk-0.3.30-py3-none-linux_armv7l.whl; \
 	else \
 		echo "Downloading Vosk 0.3.30 for x86_64"; \
-		wget https://github.com/alphacep/vosk-api/releases/download/0.3.30/vosk-0.3.30-py3-none-manylinux2010_x86_64.whl; \
-		pip3 install vosk-0.3.30-py3-none-manylinux2010_x86_64.whl; \
+		wget https://github.com/alphacep/vosk-api/releases/download/0.3.30/vosk-0.3.30-py3-none-linux_x86_64.whl; \
+		pip3 install vosk-0.3.30-py3-none-linux_x86_64.whl; \
 	fi && \
 	wget https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip && \
 	wget https://alphacephei.com/vosk/models/vosk-model-small-de-0.15.zip && \
@@ -73,7 +73,7 @@ RUN echo "Installing Vosk ..." && \
 	cd /home/admin && \
 	sudo rm -rf /home/admin/install && \
 #
-# TODO: install caddy?
+# TODO: install proxy with self-signed certs?
 #
 	echo "#!/bin/bash" > on-docker.sh && echo "cd sepia-stt/server && python3 -m launch" >> on-docker.sh
 	
