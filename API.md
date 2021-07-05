@@ -2,6 +2,8 @@
 
 This document describes the API to communicated with SEPIA Speech-To-Text (STT) Server.
 
+[UNDER CONSTRUCTION: Please create an issue to push me and update this :-p]
+
 ## Client connection and 'welcome' event
 
 TBD

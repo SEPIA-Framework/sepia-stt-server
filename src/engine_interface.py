@@ -8,6 +8,12 @@ class EngineInterface():
         self.send_message = send_message
         self.accept_chunks = True
         self.is_open = True
+        # Defaults
+        self._sample_rate = float(16000)
+        self._language = ""             # "de-DE", "en-US", etc. (could be: "de_DE", "de", ...)
+        self._asr_model_path = ""       # model folder relative to: settings.asr_models_folder
+        self._continuous_mode = False           # send final result once after stop event
+        self._optimize_final_result = False     # use text processors to optimize final result
 
     async def process(self, chunk: bytes):
         """Process chunk"""

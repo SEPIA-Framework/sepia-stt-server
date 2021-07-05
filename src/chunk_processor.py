@@ -110,7 +110,9 @@ class WaveFileWriter(EngineInterface):
 #--- TEST ---
 
 class ThreadTestProcessor(EngineInterface):
-    """Test: https://bocadilloproject.github.io/guide/async.html#converting-a-regular-function-to-an-asynchronous-function"""
+    """Thread test: 
+    https://bocadilloproject.github.io/guide/async.html#converting-a-regular-function-to-an-asynchronous-function
+    """
     def __init__(self, send_message):
         """Create test"""
         super().__init__(send_message)
