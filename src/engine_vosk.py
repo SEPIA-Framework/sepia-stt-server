@@ -2,11 +2,13 @@
 
 import os
 import json
+import re
 
 from vosk import Model, SpkModel, KaldiRecognizer, SetLogLevel
 
 from launch import settings
 from engine_interface import EngineInterface
+from text_processor import TextToNumberProcessor
 
 # Vosk log level - -1: off, 0: normal, 1: more verbose
 SetLogLevel(-1)
@@ -19,13 +21,20 @@ class VoskProcessor(EngineInterface):
         # Options
         if not options:
             options = {}
+        # Common options - See 'EngineInterface'
         self._sample_rate = options.get("samplerate", float(16000))
-        self._alternatives = options.get("alternatives", int(1))
+        self._language = options.get("language")
+        if self._language:
+            self.language_code_short = re.split("[-_]", self._language)[0].lower()
+        else:
+            self.language_code_short = None
+        self._asr_model_path = options.get("model", None)
         self._continuous_mode = options.get("continuous", False)
+        self._optimize_final_result = options.get("optimizeFinalResult", False)
+        # Specific options
+        self._alternatives = options.get("alternatives", int(1))
         self._return_words = options.get("words", False)
         try_speaker_detection = options.get("speaker", False)
-        self._asr_model_path = options.get("model", None)
-        self._language = options.get("language")
         self._phrase_list = options.get("phrases")
         # example: self._phrase_list = ["hallo", "kannst du mich hören", "[unk]"]
         # NOTE: speaker detection does not work in all configurations
@@ -118,6 +127,7 @@ class VoskProcessor(EngineInterface):
             "language": self._language,
             "model": self._asr_model_path,
             "samplerate": self._sample_rate,
+            "optimizeFinalResult": self._optimize_final_result,
             "alternatives": self._alternatives,
             "continuous": self._continuous_mode,
             "words": self._return_words,
@@ -184,8 +194,14 @@ class VoskProcessor(EngineInterface):
             features["speaker_vector"] = json_result.get("spk", [])
         if self._alternatives > 0:
             alternatives = json_result.get("alternatives", [])
+        transcript = json_result.get("text")
+        # Post-processing?
+        if is_final and self._optimize_final_result:
+            # Optimize final transcription
+            text_proc = TextToNumberProcessor(self._language)
+            transcript = text_proc.process(transcript)
         await self.send_transcript(
-            transcript=json_result.get("text"),
+            transcript=transcript,
             is_final=is_final,
             confidence=json_result.get("confidence", -1),
             features=features,
