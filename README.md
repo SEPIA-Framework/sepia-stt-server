@@ -6,12 +6,14 @@ It can receive a stream of audio chunks via the secure WebSocket connection and 
 One goal of this project is to offer a **standardized, secure, realtime interface** for all the great open-source ASR tools out there.
 The server works on all major platforms including single-board devices like Raspberry Pi (4).  
   
-NOTE: This is **V2** of the STT Server, for V1 please see the [LEGACY SERVER](legacy-server) folder.
+NOTE: This is **V2** of the STT Server, for V1 please see the [LEGACY SERVER](legacy-server) folder. 
+If you are using custom V1 models you can easily [convert them to V2 models](https://github.com/fquirin/kaldi-adapt-lm/blob/master/4a-build-vosk-model.sh) (please ask for details via the issues section).
 
 ## Features
 
 * WebSocket server (Python Fast-API) that can receive audio streams and send transcribed text at the same time
 * Modular architecture to support multiple ASR engines like Vosk (reference implementation), Coqui, Deepspeech, Scribosermo, ...
+* Optional post processing of result (e.g. via text2num)
 * Standardized API for all engines and support for individual engine features (speaker identification, grammar, confidence score, word timestamps, alternative results, etc.)
 * On-the-fly server and engine configuration via HTTP REST API and WebSocket 'welcome' event (including custom grammar, if supported by engine and model)
 * User authentication via simple common token or individual tokens for multiple users
@@ -22,9 +24,9 @@ NOTE: This is **V2** of the STT Server, for V1 please see the [LEGACY SERVER](le
 ## Integrated ASR Engines
 
 - [Vosk](https://github.com/alphacep/vosk-api) - Status: Included (with tiny EN and DE model)
-- [Coqui](https://github.com/coqui-ai/STT) - Status: Under construction.
-- [Scribosermo](https://gitlab.com/Jaco-Assistant/Scribosermo) - Status: Help wanted ^^.
-- If you want to see a different engine please create a new [issue](https://github.com/SEPIA-Framework/sepia-stt-server/issues). Pull requests are welcome ;-)
+- [Coqui](https://github.com/coqui-ai/STT) - Status: Planned.
+- [Scribosermo](https://gitlab.com/Jaco-Assistant/Scribosermo) - Status: Help wanted.
+- If you want to see additional engines please create a new [issue](https://github.com/SEPIA-Framework/sepia-stt-server/issues). Pull requests are welcome ;-)
 
 ## Quick-Start
 
@@ -38,7 +40,7 @@ After the download is complete simply start the container, for example via:
 sudo docker run --name=sepia-stt -p 20741:20741 -it sepia/stt-server:[platform-tag]
 ```
 
-To test the server visit: `http://localhost:20741` if you are on the same machine or `http://[server-IP]:20741` if you are in the same network.
+To test the server visit: `http://localhost:20741` if you are on the same machine or `http://[server-IP]:20741` if you are in the same network (NOTE: custom recordings via microphone will only work using localhost or a HTTPS URL!).
 
 ## Server Settings
 
@@ -59,9 +61,23 @@ As soon as the server is running you can check the current setup via the HTTP RE
   
 Individual settings for the active engine can be changed on-the-fly during the WebSocket 'welcome' event. See the [API docs](API.md) file for more info or check out the 'Engine Settings' section of the test page.
 
+## How to use with SEPIA Client
+
+The [SEPIA Client](https://github.com/SEPIA-Framework/sepia-html-client-app) will support the new STT server (v2) out-of-the-box from version 0.24.0 on. 
+Simply open the client's settings, look for 'ASR engine (STT)' and select `SEPIA`. The server address will be set automatically relative to your SEPIA Server host. 
+If your SEPIA server proxy has not been updated yet to forward requests to the SEPIA STT-Server you can enter the direct URL via the STT settings page, e.g.: `http://localhost:20741` or `http://localhost:20726/sepia/stt`.
+The settings will allow you to select a specific ASR model for each client language as well (if you don't want to use the language defaults set by your STT server config).  
+  
+NOTE: Keep in mind that the client's microphone will [only work in a secure environment](https://github.com/SEPIA-Framework/sepia-docs/wiki/SSL-for-your-Server) (that is localhost or HTTPS) 
+and thus the link to your server must be secure as well (e.g. use a real domain and SSL certificate, self-signed SSL or a proxy running on localhost).
+
 ## Develop your own client
 
-See the separate [API docs](API.md) file or check out the [test page](src/www/test.html) source-code.
+See the separate [API docs](API.md) file or check out the [Javascript client class](src/www/audio-modules/shared/sepia-stt-socket-client.js) and the [test page](src/www/test.html) source-code.  
+  
+Demo clients:
+- Server test page(s): `http://localhost:20741` (with microphone) or `http://[server-IP]:20741` (no microphone due to "insecure" origin)
+- [SEPIA Client app](https://sepia-framework.github.io/app/) (v0.24+, simply skip the login, go to settings and enter your server URL)
 
 ## Adapt ASR models
 

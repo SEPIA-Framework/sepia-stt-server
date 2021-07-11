@@ -1,4 +1,6 @@
-# SEPIA Speech-To-Text Server
+# SEPIA Speech-To-Text Server (v1)
+  
+NOTE: This README describes the **old version** of the SEPIA STT Server. Please consider upgrading to V2 to get all the new features and best support. Old ASR models can be converted easily ;-).  
   
 [BETA - UNDER CONSTRUCTION]  
   
