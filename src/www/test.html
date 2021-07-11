@@ -24,7 +24,7 @@
 		<div class="page">
 			<h1><button onclick="backToRoot()" style="margin: 0 16px 0 0; border-radius: 15px; font-size: 14px;">&#x2630;</button>SEPIA STT Server - Developer Test Page</h1>
 			<p>This is the test page intended for <b>developers</b> using the SEPIA STT server (V2). Use the microphone to record audio or choose a file (URL) then connect to the server, send the 'welcome' event and stream the last recording to get a transcription.</p>
-			<p>More demos can be found here (coming soon): <a href="https://sepia-framework.github.io/app/index.html" target=_blank>SEPIA Client</a> and here: <a href="https://github.com/SEPIA-Framework/sepia-web-audio" target=_blank>SEPIA Web Audio Lib</a></p>
+			<p>The web interface is powered by: <a href="https://github.com/SEPIA-Framework/sepia-web-audio" target=_blank>SEPIA Web Audio library</a>. App with advanced integration: <a href="https://github.com/SEPIA-Framework/sepia-html-client-app" target=_blank>SEPIA Client</a>.</p>
 			<h2>Recorder</h2>
 			<div class="section">
 				<div class="group"><label>Start/Stop:</label><button id="micButton" onclick="toggleMic();"></button></div>
@@ -229,7 +229,7 @@
 			//--- Server ---
 
 			var serverUrl = document.getElementById("serverUrl");
-			serverUrl.value = location.origin;
+			serverUrl.value = location.href.replace(/(.*)\/www\/(.*?.html|)$/, "$1"); //location.origin;
 
 			var languageCode = "";
 			var asrModel = "";
@@ -296,8 +296,11 @@
 
 			function getServerInfo(){
 				addMessage("INFO - Loading server settings...");
+				var controller = new AbortController();
+				setTimeout(() => controller.abort(), 8000);
 				fetch(serverUrl.value + "/settings", {
-					method: "GET"
+					method: "GET",
+					signal: controller.signal
 				}).then(function(res){
 					if (res.ok){
 						return res.json();
@@ -314,7 +317,11 @@
 				});
 			}
 			function pingServer(successCallback, errorCallback){
-				fetch(serverUrl.value + "/ping")
+				var controller = new AbortController();
+				setTimeout(() => controller.abort(), 8000);
+				fetch(serverUrl.value + "/ping", {
+					signal: controller.signal
+				})
 				.then(function(res){ return res.json(); })
 				.then(function(json){
 					console.log("Ping", json);
@@ -329,7 +336,7 @@
 			//--- WebSocket ---
 			
 			var protocol = (serverUrl.value.indexOf("https:") == 0)? "wss:" : "ws:";
-			var socketHost = serverUrl.value.replace(/^(https:|http:)/, protocol);
+			var socketHost = serverUrl.value.replace(/^(https:|http:)/, protocol).replace(/\/$/, "") + "/socket";
 			var ws;
 
 			var msgId = 0;
@@ -424,7 +431,7 @@
 				var sentN = 0;
 				var completeCallback = function(){
 					console.log("Sent " + totalSent + " of " + orgLength + " bytes");	//DEBUG
-					sendAudioEnd(orgLength);
+					sendAudioEnd(orgLength, false);
 				};
 				chunks.forEach(function(b, j){
 					//we don't want to send all at once ...
@@ -459,10 +466,13 @@
 					"msg_id": ++msgId
 				});
 			}
-			function sendAudioEnd(byteLength){
+			function sendAudioEnd(byteLength, bufferOrTimeLimit){
 				sendJson({
 					"type": "audioend",
-					"data": {"byteLength": byteLength},
+					"data": {
+						"byteLength": byteLength,
+						"bufferOrTimeLimit": bufferOrTimeLimit
+					},
 					"msg_id": ++msgId
 				});
 			}
@@ -537,7 +547,14 @@
 			if (phraseListInput){
 				phraseListInput.title = 'Enter phrases or words seperated by comma. Optionally add "[unk]".';
 				phraseListInput.addEventListener("blur", function(){
-					phrases = phraseListInput.value.split(/\s*(?:,|;|\.$|\. )\s*/g);
+					if (phraseListInput.value && phraseListInput.value.trim()){
+						phrases = phraseListInput.value.trim().split(/\s*(?:,|;|\.$|\. )\s*/g);
+						for (let i=0; i<phrases.length; i++){
+							phrases[i] = phrases[i].toLowerCase();
+						}
+					}else{
+						phrases = [];
+					}
 					console.log("phrases", phrases);
 					//add to options?
 					if (activeOptions.phrases && phrases && phrases.length){

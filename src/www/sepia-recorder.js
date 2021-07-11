@@ -29,10 +29,12 @@
 		console.log("debugLog", msg);
 	}
 	
+	//Resampler events
 	SepiaVoiceRecorder.onResamplerData = function(data){
 		console.log("SepiaVoiceRecorder -  onResamplerData", data);
 	}
 	
+	//Wave encoder events
 	SepiaVoiceRecorder.onWaveEncoderStateChange = function(state){
 		console.log("SepiaVoiceRecorder -  onWaveEncoderStateChange", state);
 	}
@@ -62,6 +64,46 @@
 		}
 	}
 	var waveEncoderIsBuffering = false;
+
+	//SpeechRecognition events
+	SepiaVoiceRecorder.onSpeechRecognitionStateChange = function(ev){
+		console.log("SepiaVoiceRecorder -  onSpeechRecognitionStateChange", ev);
+	}
+	SepiaVoiceRecorder.onSpeechRecognitionEvent = function(data){
+		console.log("SepiaVoiceRecorder -  onSpeechRecognitionEvent", data);
+	}
+	function onSpeechRecognitionData(msg){
+		if (!msg) return;
+		if (msg.gate){
+			//gate closed
+			if (msg.gate.isOpen == false && asrModuleGateIsOpen){
+				asrModuleGateIsOpen = false;
+				//STATE: streamend
+				SepiaVoiceRecorder.onSpeechRecognitionStateChange({
+					state: "onStreamEnd", 
+					bufferOrTimeLimit: msg.gate.bufferOrTimeLimit
+				});
+			//gate opened
+			}else if (msg.gate.isOpen == true && !asrModuleGateIsOpen){
+				//STATE: streamstart
+				SepiaVoiceRecorder.onSpeechRecognitionStateChange({
+					state: "onStreamStart"
+				});
+				asrModuleGateIsOpen = true;
+			}
+		}
+		if (msg.recognitionEvent){
+			SepiaVoiceRecorder.onSpeechRecognitionEvent(msg.recognitionEvent);
+		}
+		if (msg.connectionEvent){
+			//TODO: use? - type: open, ready, close
+		}
+		//In debug or test-mode the module might send the recording:
+		if (msg.output && msg.output.wav){
+			SepiaVoiceRecorder.onWaveEncoderAudioData(msg.output.wav);
+		}
+	}
+	var asrModuleGateIsOpen = false;
 	
 	//recorder processor:
 	
@@ -71,6 +113,13 @@
 	
 	async function createRecorder(options){
 		if (!options) options = {};
+		else {
+			//overwrite shared defaults?
+			if (options.targetSampleRate) targetSampleRate = options.targetSampleRate;
+			if (options.resamplerBufferSize) resamplerBufferSize = options.resamplerBufferSize;
+		}
+		var useRecognitionModule = !!options.asr;
+		if (!options.asr) options.asr = {};
 		//audio source
 		var customSource = undefined;
 		if (options.fileUrl){
@@ -93,7 +142,7 @@
 				options: {
 					processorOptions: {
 						targetSampleRate: targetSampleRate,
-						resampleQuality: 4, 	//1 [low] - 10 [best],
+						resampleQuality: options.resampleQuality || 4, 	//1 [low] - 10 [best],
 						bufferSize: resamplerBufferSize,
 						passThroughMode: 0,		//0: none, 1: original (float32), 2: 16Bit PCM - NOTE: NOT resampled
 						calculateRmsVolume: true,
@@ -115,22 +164,65 @@
 						inputSampleRate: targetSampleRate,
 						inputSampleSize: resamplerBufferSize,
 						lookbackBufferMs: 0,
-						recordBufferLimitKb: 500,
-						recordBufferLimitMs: options.recordingLimitMs
+						recordBufferLimitKb: 500,		//default: 5MB (overwritten by ms limit), good value e.g. 600
+						recordBufferLimitMs: options.recordingLimitMs,
+						doDebug: false
 					}
 				}
 			}
 		};
-		SepiaVoiceRecorder.waveEncoder = waveEncoder;
 		var waveEncoderIndex;
+
+		var sttServerModule = {
+			name: 'stt-socket',
+			type: 'worker',
+			handle: {},		//will be updated on init. with ref. to node.
+			settings: {
+				onmessage: onSpeechRecognitionData,
+				options: {
+					setup: {
+						//rec. options
+						inputSampleRate: targetSampleRate,
+						inputSampleSize: resamplerBufferSize,
+						lookbackBufferMs: 0,
+						recordBufferLimitKb: 500,			//default: 5MB (overwritten by ms limit), good value e.g. 600
+						recordBufferLimitMs: options.recordingLimitMs,	//NOTE: will not apply in 'continous' mode (but buffer will not grow larger)
+						//ASR server options
+						messageFormat: options.asr.messageFormat || "webSpeechApi",		//use events in 'webSpeechApi' compatible format
+						socketUrl: options.asr.serverUrl,	//NOTE: if set to 'debug' it will trigger "dry run" (wav file + pseudo res.)
+						clientId: options.asr.clientId,
+						accessToken: options.asr.accessToken,
+						language: options.asr.language || "",
+						continuous: (options.asr.continuous != undefined? options.asr.continuous : false),	//one final result only?
+						engineOptions: options.asr.engineOptions || {},		//any specific engine options (e.g. ASR model, optimizeFinalResult)
+						//other
+						returnAudioFile: options.asr.returnAudioFile || false,			//NOTE: can be enabled via "dry run" mode
+						doDebug: false
+					}
+				}
+			}
+		};
+		var sttServerModuleIndex;
 				
 		//put together modules
 		var activeModules = [];
+		
+		//- resampler is required
 		activeModules.push(resampler);
 		resamplerIndex = activeModules.length;		
-		activeModules.push(waveEncoder);
-		waveEncoderIndex = activeModules.length;
-		resampler.settings.sendToModules.push(waveEncoderIndex);	//add to resampler
+		
+		//- use either speech-recognition (ASR) or wave-encoder
+		if (useRecognitionModule){
+			activeModules.push(sttServerModule);
+			sttServerModuleIndex = activeModules.length;
+			SepiaVoiceRecorder.sttServerModule = sttServerModule;
+			resampler.settings.sendToModules.push(sttServerModuleIndex);	//add to resampler
+		}else{
+			activeModules.push(waveEncoder);
+			waveEncoderIndex = activeModules.length;
+			SepiaVoiceRecorder.waveEncoder = waveEncoder;
+			resampler.settings.sendToModules.push(waveEncoderIndex);		//add to resampler
+		}
 				
 		//create processor
 		sepiaWebAudioProcessor = new SepiaFW.webAudio.Processor({
@@ -176,7 +268,8 @@
 	SepiaVoiceRecorder.start = function(successCallback, noopCallback, errorCallback){
 		if (sepiaWebAudioProcessor){
 			sepiaWebAudioProcessor.start(function(){
-				waveEncoderSetGate("open");			//start recording
+				waveEncoderSetGate("open");					//start recording
+				speechRecognitionModuleSetGate("open");		//start recognition
 				if (successCallback) successCallback();
 			}, noopCallback, errorCallback);
 		}else{
@@ -186,7 +279,8 @@
 	SepiaVoiceRecorder.stop = function(stopCallback, noopCallback, errorCallback){
 		if (sepiaWebAudioProcessor){
 			sepiaWebAudioProcessor.stop(function(info){
-				waveEncoderSetGate("close");		//stop recording
+				waveEncoderSetGate("close");				//stop recording
+				speechRecognitionModuleSetGate("close");	//stop recognition
 				if (stopCallback) stopCallback(info);
 			}, noopCallback, errorCallback);
 		}else{
@@ -238,6 +332,11 @@
 	function waveEncoderGetWave(){
 		if (sepiaWebAudioProcessor && SepiaVoiceRecorder.waveEncoder){
 			SepiaVoiceRecorder.waveEncoder.handle.sendToModule({request: {get: "wave"}});
+		}
+	}
+	function speechRecognitionModuleSetGate(state){
+		if (sepiaWebAudioProcessor && SepiaVoiceRecorder.sttServerModule){
+			SepiaVoiceRecorder.sttServerModule.handle.sendToModule({gate: state});	//"open", "close"
 		}
 	}
 
