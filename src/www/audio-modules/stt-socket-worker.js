@@ -211,6 +211,7 @@ function constructWorker(options){
 
 	//end on first final result? - NOTE: this works a bit different than WebSpeech "continuous"
 	continuous = (options.setup.continuous != undefined)? options.setup.continuous : false;
+	//interimResults (unused?)
 
 	//server
 	socketUrl = options.setup.socketUrl || options.setup.serverUrl || "http://localhost:20741";
@@ -221,24 +222,21 @@ function constructWorker(options){
 		enableDryRun = true;
 		returnAudioFile = true;
 	}else{
-		var asrEngineOptions = options.setup.engineOptions || {};	//interimResults (unused?), alternatives, etc.
-		var optimizeFinalResult = (options.setup.optimizeFinalResult != undefined)? options.setup.optimizeFinalResult : true;
-		var engineOptions = Object.assign({}, asrEngineOptions, {
-			//common options
-			samplerate: inputSampleRate,
-			continuous: continuous,
-			language: (options.setup.language || ""),
-			model: (asrEngineOptions.model || ""),		//e.g.: "vosk-model-small-de"
-			optimizeFinalResult: optimizeFinalResult,
-			//specials (e.g. for Vosk):
-			/*
-			alternatives: (asrEngineOptions.alternatives || 1),
-			phrases: [],
-			speaker: false,
-			words: false
-			*/
-			doDebug: doDebug
-		});
+		var engineOptions = options.setup.engineOptions || {};	//all options (common and engine specific)
+		//common option shortcuts (overwrites engineOptions - usually supported by all engines):
+		engineOptions.samplerate = inputSampleRate;
+		engineOptions.continuous = continuous;
+		if (options.setup.language) engineOptions.language = options.setup.language;	//e.g.: "de-DE"
+		if (options.setup.model) engineOptions.model = options.setup.model;				//e.g.: "vosk-model-small-de"
+		if (options.setup.optimizeFinalResult != undefined) engineOptions.optimizeFinalResult = options.setup.optimizeFinalResult;
+		engineOptions.doDebug = doDebug;
+		//special options (e.g. for Vosk):
+		/*
+		alternatives: 1,
+		phrases: [],
+		speaker: false,
+		words: false
+		*/
 		//console.error("engineOptions", engineOptions);		//DEBUG
 		var serverOptions = {
 			onOpen: function(){

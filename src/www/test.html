@@ -578,6 +578,7 @@
 				var modalContent = document.createElement("div");
 				modalContent.innerHTML = "<p>NOTE: Engine options will be updated during 'welcome' event</p>";
 				var optionsBox = document.createElement("textarea");
+				optionsBox.spellcheck = false;
 				optionsBox.textContent = JSON.stringify(activeOptions, null, 1);
 				/* Vosk example:
 				{

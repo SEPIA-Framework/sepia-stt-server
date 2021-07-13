@@ -188,13 +188,17 @@
 						recordBufferLimitKb: 500,			//default: 5MB (overwritten by ms limit), good value e.g. 600
 						recordBufferLimitMs: options.recordingLimitMs,	//NOTE: will not apply in 'continous' mode (but buffer will not grow larger)
 						//ASR server options
-						messageFormat: options.asr.messageFormat || "webSpeechApi",		//use events in 'webSpeechApi' compatible format
-						socketUrl: options.asr.serverUrl,	//NOTE: if set to 'debug' it will trigger "dry run" (wav file + pseudo res.)
+						serverUrl: options.asr.serverUrl,	//NOTE: if set to 'debug' it will trigger "dry run" (wav file + pseudo res.)
 						clientId: options.asr.clientId,
 						accessToken: options.asr.accessToken,
+						//ASR engine common options
+						messageFormat: options.asr.messageFormat || "webSpeechApi",		//use events in 'webSpeechApi' compatible format
 						language: options.asr.language || "",
+						model: options.asr.model || "",
 						continuous: (options.asr.continuous != undefined? options.asr.continuous : false),	//one final result only?
-						engineOptions: options.asr.engineOptions || {},		//any specific engine options (e.g. ASR model, optimizeFinalResult)
+						optimizeFinalResult: options.asr.optimizeFinalResult,	//try to optimize result e.g. by converting text to numbers etc.
+						//ASR engine specific options (can include commons but will be overwritten with above)
+						engineOptions: options.asr.engineOptions || {},			//e.g. ASR model, alternatives, ...
 						//other
 						returnAudioFile: options.asr.returnAudioFile || false,			//NOTE: can be enabled via "dry run" mode
 						doDebug: false
