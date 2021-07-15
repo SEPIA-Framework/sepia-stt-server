@@ -10,7 +10,7 @@ from settings import SettingsFile
 
 # Server constants
 SERVER_NAME = "SEPIA STT Server V2 BETA"
-SERVER_VERSION = "0.9.1"
+SERVER_VERSION = "0.9.2"
 
 # Run arguments
 argv=sys.argv[1:]
