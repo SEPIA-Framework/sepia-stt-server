@@ -13,7 +13,7 @@ If you are using custom V1 models you can easily [convert them to V2 models](htt
 
 * WebSocket server (Python Fast-API) that can receive audio streams and send transcribed text at the same time
 * Modular architecture to support multiple ASR engines like Vosk (reference implementation), Coqui, Deepspeech, Scribosermo, ...
-* Optional post processing of result (e.g. via text2num)
+* Optional post processing of result (e.g. via [text2num](https://github.com/allo-media/text2num))
 * Standardized API for all engines and support for individual engine features (speaker identification, grammar, confidence score, word timestamps, alternative results, etc.)
 * On-the-fly server and engine configuration via HTTP REST API and WebSocket 'welcome' event (including custom grammar, if supported by engine and model)
 * User authentication via simple common token or individual tokens for multiple users
