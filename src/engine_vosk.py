@@ -174,10 +174,11 @@ class VoskProcessor(EngineInterface):
         if last_result_was_final and not self._continuous_mode:
             # Send final result (because we haven't done it yet)
             await self._send(self._final_result, True)
-            self._recognizer.Reset()
+            # self._recognizer.Reset()  # TODO: we skip this for now to prevent ERROR if already reset
         elif last_result_was_final:
             # We don't need to do anything but reset ... right?
-            self._recognizer.Reset()
+            # self._recognizer.Reset()  # TODO: we skip this for now to prevent ERROR if already reset
+            pass
         else:
             # Request final
             result = self._recognizer.FinalResult()
@@ -194,9 +195,9 @@ class VoskProcessor(EngineInterface):
             features["speaker_vector"] = json_result.get("spk", [])
         if self._alternatives > 0:
             alternatives = json_result.get("alternatives", [])
-        transcript = json_result.get("text")
+        transcript = json_result.get("text", "")
         # Post-processing?
-        if is_final and self._optimize_final_result:
+        if is_final and transcript and self._optimize_final_result:
             # Optimize final transcription
             text_proc = TextToNumberProcessor(self._language)
             transcript = text_proc.process(transcript)
