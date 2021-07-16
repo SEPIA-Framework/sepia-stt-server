@@ -102,7 +102,8 @@ function init(){
 
 //Requests
 
-function gateControl(open, gateOptions){
+function gateControl(open, gateOptions, triggeredOnError){
+	//console.error("gateControl - open:", open);		//DEBUG
 	if (!gateOptions) gateOptions = {}; 		//TODO: use e.g. for ?
 	var msg = {
 		moduleEvent: true,		//use 'moduleEvent' to distinguish from normal processing result
@@ -152,7 +153,7 @@ function gateControl(open, gateOptions){
 		}
 
 		//send WAV?
-		if (returnAudioFile && recordedBuffers.length){
+		if (!triggeredOnError && returnAudioFile && recordedBuffers.length){
 			setTimeout(function(){
 				sendWaveFileArrayBuffer(getWave());
 			}, 100);
@@ -246,6 +247,7 @@ function constructWorker(options){
 			onReady: function(activeOptions){
 				if (doDebug) console.error("SttSocketWorker - DEBUG - CONNECTION READY", activeOptions);
 				sendConnectionEvent("ready");
+				//make sure stream starts or continues
 				startOrContinueStream();
 			},
 			onClose: function(){
@@ -278,6 +280,10 @@ function constructWorker(options){
 					sendWebSpeechCompatibleError(reason, err.message || err.name || "");
 				}else{
 					sendDefaultErrorEvent(err);
+				}
+				//make sure stream stops
+				if (gateIsOpen){
+					gateControl(false, {}, true);
 				}
 			}
 		};
@@ -437,7 +443,9 @@ function maxLengthReached(){
 		recordedBuffers.splice(0, shift);
 	}else{
 		//close
-		gateControl(false);
+		if (gateIsOpen){
+			gateControl(false);
+		}
 	}
 	//TODO: do more ... ?
 }
