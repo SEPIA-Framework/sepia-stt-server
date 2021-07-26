@@ -22,7 +22,7 @@
 
 import re
 from itertools import dropwhile
-from typing import Any, Iterator, List, Sequence, Tuple, Union
+from typing import Any, Iterator, List, Sequence, Tuple, Union, Optional
 
 from .lang import LANG, Language, German, Portuguese
 from .parsers import (
@@ -62,7 +62,7 @@ def text2num(text: str, lang: Union[str, Language], relaxed: bool = False) -> in
 
     Set ``relaxed`` to True if you want to accept "quatre vingt(s)" as "quatre-vingt".
 
-    Raises an AssertionError if ``text`` does not describe a valid number.
+    Raises an ValueError if ``text`` does not describe a valid number.
     Return an int.
     """
     language: Language
@@ -74,8 +74,8 @@ def text2num(text: str, lang: Union[str, Language], relaxed: bool = False) -> in
     if type(language) is German:
         # The German number writing rules do not apply to the common order of number processing
         num_parser = WordStreamValueParserGerman(
-            language, relaxed=relaxed
-        )  # TODO: relaxed not supported yet
+            language, relaxed=relaxed # TODO: relaxed not supported yet (what do we expect here?)
+        )
         num_parser.parse(text)
         return num_parser.value
     # Common
@@ -109,14 +109,14 @@ def alpha2digit(
     language = LANG[lang]
     segments = re.split(
         r"\s*[\.,;\(\)…\[\]:!\?]+\s*", text
-    )  # TODO: what if you have 3.14 or 11:55 in your text?
+    )  # TODO: what if you have "1." (1st) or "3.14" or "11:55" in your text?
     punct = re.findall(r"\s*[\.,;\(\)…\[\]:!\?]+\s*", text)
     if len(punct) < len(segments):
         punct.append("")
 
     # Process segments
     if type(language) is German:
-        text = _alpha2digit_agg(language, segments, punct, signed)
+        text = _alpha2digit_agg(language, segments, punct, signed, ordinal_threshold)
     else:
         out_segments: List[str] = []
         for segment, sep in zip(segments, punct):
@@ -159,49 +159,113 @@ def alpha2digit(
 
 
 def _alpha2digit_agg(
-    language: Language, segments: List[str], punct: List[Any], signed: bool
+    language: Language,
+    segments: List[str],
+    punct: List[Any],
+    signed: bool,
+    ordinal_threshold: int = 3
 ) -> str:
     """Variant for "agglutinative" languages.
     Only German for now.
     """
     out_segments: List[str] = []
 
+    def revert_if_alone(sentence_effective_len: int, current_sentence: List[str]) -> bool:
+        """Test if word is 'alone' and should not be shown as number."""
+        # TODO: move this to Language?
+        if sentence_effective_len == 1 and current_sentence[0].lower() in language.NEVER_IF_ALONE:
+            return True
+        else:
+            return False
+
     for segment, sep in zip(segments, punct):
         tokens = segment.split()
-        sentence = []
+        sentence: List[str] = []
         out_tokens: List[str] = []
         out_tokens_is_num: List[bool] = []
-        old_num_result = None
+        out_tokens_ordinal_org: List[Optional[str]] = []
+        combined_num_result = None
+        current_token_ordinal_org = None
+        reset_to_last_if_failed = False
         token_index = 0
 
         while token_index < len(tokens):
             t = tokens[token_index]
+            token_to_add = None
+            token_to_add_is_num = False
+            tmp_token_ordinal_org = None
+            cardinal_for_ordinal = language.ord2card(t)
+            if cardinal_for_ordinal:
+                tmp_token_ordinal_org = t
+                t = cardinal_for_ordinal
             sentence.append(t)
-
             try:
+                # TODO: this is very inefficient because we analyze the same again and again until ERROR
+                # including 'split_number_word' and all the heavy lifting ... but it works ¯\_(ツ)_/¯
                 num_result = text2num(" ".join(sentence), language)
-                old_num_result = num_result
+                combined_num_result = num_result
+                current_token_ordinal_org = tmp_token_ordinal_org
                 token_index += 1
+                reset_to_last_if_failed = False
+                # ordinals end groups
+                if current_token_ordinal_org and num_result > ordinal_threshold:
+                    token_to_add = str(combined_num_result)
+                    token_to_add_is_num = True
+                # ... but ordinals threshold reverts number back 
+                elif current_token_ordinal_org:
+                    current_token_ordinal_org = None
+                    sentence[len(sentence)-1] = str(tmp_token_ordinal_org)
+                    token_to_add = " ".join(sentence)
+                    token_to_add_is_num = False
             except ValueError:
-                # " ".join(sentence) cannot be resolved to a number
-
-                # last token has to be tested again in case there is sth like "eins eins eins"
-                # which is invalid in sum but separately allowed
-                if old_num_result is not None:
-                    out_tokens.append(str(old_num_result))
-                    out_tokens_is_num.append(True)
-                    sentence.clear()
+                # This will happen if look-ahead was required (e.g. because of AND) but failed:
+                if reset_to_last_if_failed:
+                    reset_to_last_if_failed = False
+                    # repeat last try but ...
+                    token_index -= 1
+                    # ... finish old group first and clean up
+                    token_to_add = str(combined_num_result)
+                    token_to_add_is_num = True
+                # This can happen if a) ends with not num. b) ends with AND c) ends with invalid next num:
+                elif combined_num_result is not None:
+                    if t == language.AND and (token_index + 1) < len(tokens):
+                        # number might continue after AND
+                        # test the next and then decide to keep it or reset group
+                        reset_to_last_if_failed = True
+                        token_index += 1
+                    else:
+                        # last token has to be tested again in case there is sth like "eins eins"
+                        # finish LAST group but keep token_index
+                        token_to_add = str(combined_num_result)
+                        token_to_add_is_num = True
                 else:
-                    out_tokens.append(t)
-                    out_tokens_is_num.append(False)
-                    sentence.clear()
+                    # previous text was not a valid number
+                    # prep. for next group
                     token_index += 1
-                old_num_result = None
+                    token_to_add = t
+                    token_to_add_is_num = False
+            # new grouped tokens? then add and prep. next
+            if token_to_add:
+                if token_to_add_is_num and revert_if_alone(len(sentence)-1, sentence):
+                    token_to_add = str(sentence[0])
+                    token_to_add_is_num = False
+                    current_token_ordinal_org = None
+                out_tokens.append(token_to_add)
+                out_tokens_is_num.append(token_to_add_is_num)
+                out_tokens_ordinal_org.append(current_token_ordinal_org)
+                sentence.clear()
+                combined_num_result = None
+                current_token_ordinal_org = None
 
         # any remaining tokens to add?
-        if old_num_result is not None:
-            out_tokens.append(str(old_num_result))
-            out_tokens_is_num.append(True)
+        if combined_num_result is not None:
+            if revert_if_alone(len(sentence), sentence):
+                out_tokens.append(str(sentence[0]))
+                out_tokens_is_num.append(False)
+            else:
+                out_tokens.append(str(combined_num_result))
+                out_tokens_is_num.append(True)
+            out_tokens_ordinal_org.append(None) # we can't reach this if it was ordinal
 
         # join all and keep track on signs
         out_segment = ""
@@ -210,9 +274,12 @@ def _alpha2digit_agg(
                 if index < len(out_tokens) - 1:
                     if out_tokens_is_num[index + 1] is True:
                         out_segment += language.SIGN[ot]
+            elif out_tokens_ordinal_org[index] is not None:
+                out_segment += language.num_ord(ot, str(out_tokens_ordinal_org[index])) + " "
             else:
                 out_segment += ot + " "
 
+        # print("all:", out_tokens, out_tokens_is_num, out_tokens_ordinal_org) # DEBUG
         out_segments.append(out_segment.strip())
         out_segments.append(sep)
     return "".join(out_segments)
