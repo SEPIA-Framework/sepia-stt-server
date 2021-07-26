@@ -32,7 +32,8 @@ class TextToNumberProcessor(TextProcessor):
         """Take input text and replace number strings with real numbers"""
         if text_input and self.supports_language:
             # convert numbers in text to digits
-            return alpha2digit(text_input, self.language_code_short)
+            return alpha2digit(text_input, self.language_code_short,
+                relaxed=True, ordinal_threshold=0)
         elif text_input:
             # return unchanged
             return text_input
