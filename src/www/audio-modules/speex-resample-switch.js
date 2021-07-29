@@ -137,7 +137,7 @@ class SpeexResampleProcessor extends AudioWorkletProcessor {
 					channelCount: that.channelCount,
 					resamplingMode: that.resamplingMode,
 					gain: that.gain,
-					inputPassThrough: that.inputPassThrough
+					passThroughMode: that.passThroughMode
 				}
 			});
 		}

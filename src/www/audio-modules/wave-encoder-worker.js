@@ -184,6 +184,11 @@ function gateControl(open, gateOptions){
 		gateIsOpen = false;
 		msg.gate.openedAt = _gateOpenTS;
 		msg.gate.closedAt = _gateCloseTS;
+		var closedDueToBufferLimit = (recordedBuffers && recordBufferMaxN 
+			&& recordedBuffers.length && recordedBuffers.length >= recordBufferMaxN);
+		if (closedDueToBufferLimit){
+			msg.gate.bufferOrTimeLimit = true;
+		}
 	}
 	msg.gate.isOpen = gateIsOpen;
 	postMessage(msg);
