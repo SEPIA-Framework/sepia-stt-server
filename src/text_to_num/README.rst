@@ -8,7 +8,7 @@ text2num
 
 - Parsing of numbers expressed as words in French, English, Spanish, Portuguese and German and convert them to integer values.
 - Detection of ordinal, cardinal and decimal numbers in a stream of French, English, Spanish and Portuguese words and get their decimal digit representations. NOTE: Spanish does not support ordinal numbers yet.
-- Detection of ordinal numbers in a German text (BETA)
+- Detection of ordinal, cardinal and decimal numbers in a German text (BETA). NOTE: No support for 'relaxed=False' yet (behaves like 'True' by default).
 
 Compatibility
 -------------
@@ -195,7 +195,7 @@ Portuguese:
     'Ordinais: 5º, terceiro, 20ª, 21º, 104º'
 
 
-German (BETA, decimals are not supported yet):
+German (BETA, Note: 'relaxed' parameter is not supported yet and 'True' by default):
 
 .. code-block:: python
 
@@ -220,6 +220,10 @@ German (BETA, decimals are not supported yet):
     >>> text = "Es ist ein Buch mit dreitausend Seiten aber nicht das erste."
     >>> alpha2digit(text, "de", ordinal_threshold=0)
     'Es ist ein Buch mit 3000 Seiten aber nicht das 1..'
+
+    >>> text = "Pi ist drei Komma eins vier und so weiter, aber nicht drei Komma vierzehn :-p"
+    >>> alpha2digit(text, "de", ordinal_threshold=0)
+    'Pi ist 3,14 und so weiter, aber nicht 3 Komma 14 :-p'
 
 
 Read the complete documentation on `ReadTheDocs <http://text2num.readthedocs.io/>`_.

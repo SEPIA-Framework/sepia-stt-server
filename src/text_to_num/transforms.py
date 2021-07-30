@@ -60,7 +60,8 @@ def text2num(text: str, lang: Union[str, Language], relaxed: bool = False) -> in
     """Convert the ``text`` string containing an integer number written as letters
     into an integer value.
 
-    Set ``relaxed`` to True if you want to accept "quatre vingt(s)" as "quatre-vingt".
+    Set ``relaxed`` to True if you want to accept "quatre vingt(s)" as "quatre-vingt"
+    (fr) or "ein und zwanzig" as "einundzwanzig" (de) etc..
 
     Raises an ValueError if ``text`` does not describe a valid number.
     Return an int.
@@ -74,11 +75,11 @@ def text2num(text: str, lang: Union[str, Language], relaxed: bool = False) -> in
     if type(language) is German:
         # The German number writing rules do not apply to the common order of number processing
         num_parser = WordStreamValueParserGerman(
-            language, relaxed=relaxed # TODO: relaxed not supported yet (what do we expect here?)
+            language, relaxed=relaxed
         )
         num_parser.parse(text)
         return num_parser.value
-    # Common
+    # Default
     else:
         num_parser = WordStreamValueParser(language, relaxed=relaxed)
         tokens = list(dropwhile(lambda x: x in language.ZERO, text.split()))
@@ -109,15 +110,25 @@ def alpha2digit(
     language = LANG[lang]
     segments = re.split(
         r"\s*[\.,;\(\)…\[\]:!\?]+\s*", text
-    )  # TODO: what if you have "1." (1st) or "3.14" or "11:55" in your text?
+    )
     punct = re.findall(r"\s*[\.,;\(\)…\[\]:!\?]+\s*", text)
     if len(punct) < len(segments):
         punct.append("")
 
     # Process segments
     if type(language) is German:
-        text = _alpha2digit_agg(language, segments, punct, signed, ordinal_threshold)
+        # TODO: we should try to build a proper 'WordToDigitParser' for German
+        # and refactor the code to be more similar to the default logic below
+        text = _alpha2digit_agg(
+            language,
+            segments,
+            punct,
+            relaxed=relaxed,
+            signed=signed,
+            ordinal_threshold=ordinal_threshold
+        )
     else:
+        # Default
         out_segments: List[str] = []
         for segment, sep in zip(segments, punct):
             tokens = segment.split()
@@ -162,10 +173,16 @@ def _alpha2digit_agg(
     language: Language,
     segments: List[str],
     punct: List[Any],
+    relaxed: bool,
     signed: bool,
     ordinal_threshold: int = 3
 ) -> str:
-    """Variant for "agglutinative" languages.
+    """Variant for "agglutinative" languages and languages with different style
+    of processing numbers, for example:
+
+    Default parser: "twenty one" (en) = 20, 1, "vingt et un" (fr) = 20, 1
+    German parser: "einundzwanzig" or "ein und zwanzig" (de) = 1, 20
+
     Only German for now.
     """
     out_segments: List[str] = []
@@ -180,6 +197,7 @@ def _alpha2digit_agg(
 
     for segment, sep in zip(segments, punct):
         tokens = segment.split()
+        # TODO: Should we use 'split_number_word' once on each token here if relaxed=True?
         sentence: List[str] = []
         out_tokens: List[str] = []
         out_tokens_is_num: List[bool] = []
@@ -200,9 +218,11 @@ def _alpha2digit_agg(
                 t = cardinal_for_ordinal
             sentence.append(t)
             try:
-                # TODO: this is very inefficient because we analyze the same again and again until ERROR
-                # including 'split_number_word' and all the heavy lifting ... but it works ¯\_(ツ)_/¯
-                num_result = text2num(" ".join(sentence), language)
+                # TODO: this is very inefficient because we analyze the same text
+                # again and again until it fails including 'split_number_word' and all the
+                # heavy lifting ... but it works and is hard to optimize ¯\_(ツ)_/¯
+                num_result = text2num(" ".join(sentence), language, relaxed=relaxed)
+                # TODO: here we need to use 'relaxed' to check how to continue
                 combined_num_result = num_result
                 current_token_ordinal_org = tmp_token_ordinal_org
                 token_index += 1
@@ -211,7 +231,7 @@ def _alpha2digit_agg(
                 if current_token_ordinal_org and num_result > ordinal_threshold:
                     token_to_add = str(combined_num_result)
                     token_to_add_is_num = True
-                # ... but ordinals threshold reverts number back 
+                # ... but ordinals threshold reverts number back
                 elif current_token_ordinal_org:
                     current_token_ordinal_org = None
                     sentence[len(sentence)-1] = str(tmp_token_ordinal_org)
@@ -226,7 +246,7 @@ def _alpha2digit_agg(
                     # ... finish old group first and clean up
                     token_to_add = str(combined_num_result)
                     token_to_add_is_num = True
-                # This can happen if a) ends with not num. b) ends with AND c) ends with invalid next num:
+                # Happens if a) ends with no num b) ends with AND c) ends with invalid next num:
                 elif combined_num_result is not None:
                     if t == language.AND and (token_index + 1) < len(tokens):
                         # number might continue after AND
@@ -265,17 +285,41 @@ def _alpha2digit_agg(
             else:
                 out_tokens.append(str(combined_num_result))
                 out_tokens_is_num.append(True)
-            out_tokens_ordinal_org.append(None) # we can't reach this if it was ordinal
+            out_tokens_ordinal_org.append(None)  # we can't reach this if it was ordinal
 
         # join all and keep track on signs
         out_segment = ""
+        num_of_tokens = len(out_tokens)
+        next_is_decimal_num = False
         for index, ot in enumerate(out_tokens):
-            if (ot in language.SIGN) and signed:
-                if index < len(out_tokens) - 1:
+            if next_is_decimal_num:
+                # continue decimals?
+                if (
+                    index < num_of_tokens - 1
+                    and out_tokens_is_num[index + 1]
+                    and int(out_tokens[index + 1]) < 10
+                ):
+                    out_segment += ot
+                else:
+                    next_is_decimal_num = False
+                    out_segment += ot + " "
+            elif (ot in language.SIGN) and signed:
+                # sign check
+                if index < num_of_tokens - 1:
                     if out_tokens_is_num[index + 1] is True:
                         out_segment += language.SIGN[ot]
             elif out_tokens_ordinal_org[index] is not None:
+                # cardinal transform
                 out_segment += language.num_ord(ot, str(out_tokens_ordinal_org[index])) + " "
+            elif (
+                (ot.lower() in language.DECIMAL_SEP)
+                and index > 0 and index < num_of_tokens - 1
+                and out_tokens_is_num[index - 1] and out_tokens_is_num[index + 1]
+                and int(out_tokens[index + 1]) < 10
+            ):
+                # decimal
+                out_segment = out_segment.strip() + language.DECIMAL_SYM
+                next_is_decimal_num = True
             else:
                 out_segment += ot + " "
 
