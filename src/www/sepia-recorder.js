@@ -64,6 +64,31 @@
 		}
 	}
 	var waveEncoderIsBuffering = false;
+	
+	//Voice-Activity-Detection events
+	SepiaVoiceRecorder.onVadStateChange = function(state, code){
+		console.log("SepiaVoiceRecorder -  onVadStateChange", state, code);
+	}
+	function onVadData(data){
+		//console.log("onVadData", data);	//DEBUG
+		if (data.voiceActivity != undefined){}
+		if (data.voiceEnergy != undefined){}
+		if (data.vadSequenceCode != undefined){
+			//console.log("VAD sequence event: " + data.vadSequenceMsg);		//DEBUG
+			if (data.vadSequenceCode == 1){
+				SepiaVoiceRecorder.onVadStateChange("vaup", 1);			//1: voice activity registered
+			}else if (data.vadSequenceCode == 2){
+				SepiaVoiceRecorder.onVadStateChange("speechstart", 2);	//2: sequence started (continous speech)
+			}else if (data.vadSequenceCode == 3){
+				SepiaVoiceRecorder.onVadStateChange("vadown", 3);		//3: voice activity gone
+			}else if (data.vadSequenceCode == 4){
+				SepiaVoiceRecorder.onVadStateChange("speechend", 4);	//4: speech finished max. time
+			}else if (data.vadSequenceCode == 5){
+				SepiaVoiceRecorder.onVadStateChange("speechend", 5); 	//5: speech finished (sequence end)
+				//data.vadSequenceStarted, data.vadSequenceEnded
+			}
+		}
+	}
 
 	//SpeechRecognition events
 	SepiaVoiceRecorder.onSpeechRecognitionStateChange = function(ev){
@@ -96,7 +121,7 @@
 			SepiaVoiceRecorder.onSpeechRecognitionEvent(msg.recognitionEvent);
 		}
 		if (msg.connectionEvent){
-			//TODO: use? - type: open, ready, close
+			//TODO: use? - type: open, ready, closed
 		}
 		//In debug or test-mode the module might send the recording:
 		if (msg.output && msg.output.wav){
@@ -119,7 +144,9 @@
 			if (options.resamplerBufferSize) resamplerBufferSize = options.resamplerBufferSize;
 		}
 		var useRecognitionModule = !!options.asr;
-		if (!options.asr) options.asr = {};
+		if (typeof options.asr != "object") options.asr = {};
+		var useVadModule = !!options.vad;
+		if (typeof options.vad != "object") options.vad = {};
 		//audio source
 		var customSource = undefined;
 		if (options.fileUrl){
@@ -172,6 +199,29 @@
 			}
 		};
 		var waveEncoderIndex;
+		
+		var defaultVadBuffer = 480*2;	//480 is the 30ms window for WebRTC VAD 16k - its a bit "special"
+		var vadWorker = {
+			name: 'webrtc-vad-worker', 	//More experimental version: 'sepia-vad-worker'
+			type: 'worker',
+			settings: {
+				onmessage: onVadData,
+				options: {
+					setup: {
+						inputSampleRate: targetSampleRate,
+						inputSampleSize: resamplerBufferSize,
+						bufferSize: options.vad.bufferSize || defaultVadBuffer, //restrictions apply ^^
+						vadMode: options.vad.mode || 3,
+						sequence: {
+							silenceActivationTime: 450, //250,
+							maxSequenceTime: options.vad.maxSequenceTime || 10000,
+							minSequenceTime: options.vad.minSequenceTime || 600
+						}
+					}
+				}
+			}
+		};
+		var vadWorkerIndex;
 
 		var sttServerModule = {
 			name: 'stt-socket',
@@ -213,7 +263,15 @@
 		
 		//- resampler is required
 		activeModules.push(resampler);
-		resamplerIndex = activeModules.length;		
+		resamplerIndex = activeModules.length;
+		
+		//- use VAD?
+		if (useVadModule){
+			activeModules.push(vadWorker);
+			vadWorkerIndex = activeModules.length;
+			SepiaVoiceRecorder.vadModule = vadWorker;
+			resampler.settings.sendToModules.push(vadWorkerIndex);			//add to resampler
+		}
 		
 		//- use either speech-recognition (ASR) or wave-encoder
 		if (useRecognitionModule){
