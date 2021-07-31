@@ -133,6 +133,9 @@ h1 > button {
 	border-radius: 50%;
 	margin: 16px;
 	cursor: pointer;
+	-webkit-touch-callout: none !important; 
+	-webkit-user-select: none;
+	user-select: none;
 }
 @media (hover: hover) and (pointer: fine){
 	#micButton:active {
@@ -145,6 +148,12 @@ h1 > button {
 #micButton.recording {
 	background-color: #f04;
 	background-image: url(sepia-r.svg);
+}
+#micButton.reset {
+	background-color: #16ABC3 !important;
+	color: #fff !important;
+	box-shadow: 0px 1px 0px 1px #ccc !important;
+	margin: 16px !important;
 }
 #recoderInfo.with-button {
 	border: 0;

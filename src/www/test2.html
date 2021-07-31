@@ -14,7 +14,7 @@
 		<script type="text/javascript" src="sepia-recorder.js"></script>
 		<script>
 			//set correct modules folder
-			SepiaFW.webAudio.defaultProcessorOptions.moduleFolder = "audio-modules";
+			if (window.SepiaFW) SepiaFW.webAudio.defaultProcessorOptions.moduleFolder = "audio-modules";
 		</script>
 		<style>
 			#asrResultState {
@@ -52,7 +52,7 @@
 			If you experience any problems please try <a href="test.html">test page 1</a> for more detailed information.</p>
 			<h2>Recorder</h2>
 			<div class="section">
-				<div class="group"><label>Start/Stop:</label><button id="micButton" onclick="toggleMic();"></button></div>
+				<div class="group"><label>Start/Stop:</label><button id="micButton"></button></div>
 				<div class="group"><label>Gain:</label><input id="microphoneGain" class="small" type="number" value="1.0"></div>
 				<div class="group"><label>Vol. Meter (green = good):</label><div id="volumeMeter"><div id="volumeBar"></div></div></div>
 			</div>
@@ -85,6 +85,9 @@
 
 			function backToRoot(){
 				location.href = "index.html";
+			}
+			if (!window.SepiaVoiceRecorder){
+				SepiaVoiceRecorder = {notSupported: true};	//Library not found or not supported (browser <= IE11)
 			}
 
 			//--- Recorder ---
@@ -136,6 +139,15 @@
 						setMicState("idle");
 					});
 				}
+			}
+			function releaseMic(callback){
+				SepiaVoiceRecorder.stopAndReleaseIfActive(function(){
+					isLoading = false;
+					isRecording = false;
+					isWaitingForFinalResult = false;
+					setMicState("idle");
+					if (callback) callback();
+				});
 			}
 			function onMicError(){
 				setMicState("error");
@@ -290,7 +302,7 @@
 				language: "en-US",
 				model: "",
 				continuous: true,
-				optimizeFinalResult: false,
+				optimizeFinalResult: true,
 				messageFormat: "default", 	//alternative: "webSpeechApi"
 				//engine specific options:
 				engineOptions: {}
@@ -322,7 +334,7 @@
 			function getServerInfo(){
 				addMessage("INFO - Loading server settings...");
 				var controller = new AbortController();
-				setTimeout(() => controller.abort(), 8000);
+				setTimeout(function(){controller.abort();}, 8000);
 				fetch(serverSettings.serverUrl + "/settings", {
 					method: "GET",
 					signal: controller.signal
@@ -342,11 +354,82 @@
 				});
 			}
 		
-			//--- Messages and animations ---
+			//--- Controls, Messages and Animations ---
 
 			var asrResultState = document.getElementById("asrResultState");
 			var asrResultOutput = document.getElementById("asrResultOutput");
+
+			var micButton = document.getElementById("micButton");
+			function setMicState(state){
+				micButton.classList.remove("recording", "loading", "reset");
+				if (state == "loading"){
+					micButton.classList.add("loading");
+				}else if (state == "recording"){
+					micButton.classList.add("recording");
+				}else if (state == "reset"){
+					micButton.classList.add("reset");
+				}else{
+					//idle
+				}
+			}
+			var micLongPressTimer = undefined;
+			var micIsLongPress = false;
+			micButton.addEventListener('pointerdown', function(event){
+				clearTimeout(micLongPressTimer);
+				micLongPressTimer = setTimeout(function(){
+					onMicLongPress();
+				}, 1000);
+			});
+			micButton.addEventListener('pointerup', function(event){
+				clearTimeout(micLongPressTimer);
+				if (!micIsLongPress){
+					toggleMic();
+				}else{
+					setMicState("");
+				}
+				micIsLongPress = false;
+			});
+			function onMicLongPress(){
+				micIsLongPress = true;
+				releaseMic(function(){
+					if (micIsLongPress) setMicState("reset");
+					addMessage("Microphone was RELEASED (Long-Press action)");
+				});
+			}
 			
+			var volumeBar = document.getElementById("volumeBar");
+			var volBarPassedCheck = false;
+			var maxVol = 0.02;
+			function setVolume(val){
+				if (!volBarPassedCheck){
+					if (val < volumeThresholds[0] || val > volumeThresholds[1]){
+						volumeBar.style.background = "#f04";	//bad
+					}else{
+						volumeBar.style.background = "#0f4";	//good
+						volBarPassedCheck = true;
+						setTimeout(function(){ volBarPassedCheck = false; }, 2000);
+					}
+				}
+				if (val > maxVol) maxVol = val;
+				volumeBar.style.width = Math.round(val/maxVol * 100) + "%";
+			}
+
+			var phraseListInput = document.getElementById("phraseList");
+			if (phraseListInput){
+				phraseListInput.title = 'Enter phrases or words seperated by comma. Optionally add "[unk]". Write numbers as words. Use only letters.';
+				phraseListInput.addEventListener("blur", function(){
+					if (phraseListInput.value && phraseListInput.value.trim()){
+						phrases = phraseListInput.value.trim().split(/\s*(?:,|;|\.$|\. )\s*/g);
+						for (let i=0; i<phrases.length; i++){
+							phrases[i] = phrases[i].toLowerCase();
+						}
+					}else{
+						phrases = [];
+					}
+					console.log("phrases", phrases);
+				});
+			}
+
 			var messages = document.getElementById('messages');
 			function addMessage(msg){
 				var message;
@@ -367,58 +450,17 @@
 			}else{
 				messages.style.height = "150px";
 			}
-			
-			var volumeBar = document.getElementById("volumeBar");
-			var volBarPassedCheck = false;
-			var maxVol = 0.02;
-			function setVolume(val){
-				if (!volBarPassedCheck){
-					if (val < volumeThresholds[0] || val > volumeThresholds[1]){
-						volumeBar.style.background = "#f04";	//bad
-					}else{
-						volumeBar.style.background = "#0f4";	//good
-						volBarPassedCheck = true;
-						setTimeout(function(){ volBarPassedCheck = false; }, 2000);
-					}
-				}
-				if (val > maxVol) maxVol = val;
-				volumeBar.style.width = Math.round(val/maxVol * 100) + "%";
-			}
 
-			var micButton = document.getElementById("micButton");
-			function setMicState(state){
-				micButton.classList.remove("recording", "loading");
-				if (state == "loading"){
-					micButton.classList.add("loading");
-				}else if (state == "recording"){
-					micButton.classList.add("recording");
-				}else{
-					//idle
-				}
+			function showInfoModal(msg){
+				var modalContent = document.createElement("div");
+				modalContent.textContent = msg;
+				var mod = createModal(modalContent, "480px", "85%");
 			}
-
-			var phraseListInput = document.getElementById("phraseList");
-			if (phraseListInput){
-				phraseListInput.title = 'Enter phrases or words seperated by comma. Optionally add "[unk]". Write numbers as words. Use only letters.';
-				phraseListInput.addEventListener("blur", function(){
-					if (phraseListInput.value && phraseListInput.value.trim()){
-						phrases = phraseListInput.value.trim().split(/\s*(?:,|;|\.$|\. )\s*/g);
-						for (let i=0; i<phrases.length; i++){
-							phrases[i] = phrases[i].toLowerCase();
-						}
-					}else{
-						phrases = [];
-					}
-					console.log("phrases", phrases);
-				});
-			}
-
 			function showSourceInfoModal(){
 				var modalContent = document.createElement("div");
 				modalContent.textContent = sourceInfo;
 				var mod = createModal(modalContent, "480px", "85%");
 			}
-
 			function showServerSettingsModal(){
 				var modalContent = document.createElement("div");
 				modalContent.innerHTML = "<p>Configure your server connection.</p>";
@@ -447,7 +489,6 @@
 				modalContent.appendChild(cancelBtn);
 				var mod = createModal(modalContent, "480px", "85%");
 			}
-
 			function showAsrOptionsModal(){
 				var modalContent = document.createElement("div");
 				modalContent.innerHTML = "<p>Configure the ASR engine.</p>";
@@ -503,10 +544,13 @@
 
 			// ON READY
 			
-			setVolume(0);
-			setMicState("idle");
-			getServerInfo();
-
+			if (SepiaVoiceRecorder.notSupported){
+				showInfoModal("SEPIA Web Audio Library not found or not supported (IE11?)!");
+			}else{
+				setVolume(0);
+				setMicState("idle");
+				getServerInfo();
+			}
         </script>
     </body>
 </html>

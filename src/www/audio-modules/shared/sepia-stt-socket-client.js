@@ -60,7 +60,7 @@ class SepiaSttSocketClient {
 
 	pingServer(successCallback, errorCallback){
 		const controller = new AbortController();
-		setTimeout(() => controller.abort(), 8000);
+		setTimeout(function(){controller.abort();}, 8000);
 		fetch(this.serverUrl + "/ping", {
 			signal: controller.signal
 		}).then(function(res){ return res.json(); })
@@ -74,7 +74,7 @@ class SepiaSttSocketClient {
 
 	loadServerInfo(successCallback, errorCallback){
 		const controller = new AbortController();
-		setTimeout(() => controller.abort(), 8000);
+		setTimeout(function(){controller.abort();}, 8000);
 		fetch(this.serverUrl + "/settings", {
 			method: "GET",
 			signal: controller.signal

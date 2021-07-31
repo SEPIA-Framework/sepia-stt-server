@@ -14,7 +14,7 @@
 		<script type="text/javascript" src="sepia-recorder.js"></script>
 		<script>
 			//set correct modules folder
-			SepiaFW.webAudio.defaultProcessorOptions.moduleFolder = "audio-modules";
+			if (window.SepiaFW) SepiaFW.webAudio.defaultProcessorOptions.moduleFolder = "audio-modules";
 		</script>
 		
 		<style>
@@ -27,7 +27,7 @@
 			<p>The web interface is powered by: <a href="https://github.com/SEPIA-Framework/sepia-web-audio" target=_blank>SEPIA Web Audio library</a>. App with advanced integration: <a href="https://github.com/SEPIA-Framework/sepia-html-client-app" target=_blank>SEPIA Client</a>.</p>
 			<h2>Recorder</h2>
 			<div class="section">
-				<div class="group"><label>Start/Stop:</label><button id="micButton" onclick="toggleMic();"></button></div>
+				<div class="group"><label>Start/Stop:</label><button id="micButton"></button></div>
 				<div class="group"><label>Gain:</label><input id="microphoneGain" class="small" type="number" value="1.0"></div>
 				<div class="group"><label>Vol. Meter (green = good):</label><div id="volumeMeter"><div id="volumeBar"></div></div></div>
 			</div>
@@ -84,6 +84,10 @@
 			</div>
 		</div>
         <script>
+			if (!window.SepiaVoiceRecorder){
+				SepiaVoiceRecorder = {notSupported: true};	//Library not found or not supported (browser <= IE11)
+			}
+
 			//--- Navigation ---
 
 			function backToRoot(){
@@ -144,6 +148,14 @@
 						setMicState("idle");
 					});
 				}
+			}
+			function releaseMic(callback){
+				SepiaVoiceRecorder.stopAndReleaseIfActive(function(){
+					isLoading = false;
+					isRecording = false;
+					setMicState("idle");
+					if (callback) callback();
+				});
 			}
 			function onMicError(){
 				setMicState("error");
@@ -297,7 +309,7 @@
 			function getServerInfo(){
 				addMessage("INFO - Loading server settings...");
 				var controller = new AbortController();
-				setTimeout(() => controller.abort(), 8000);
+				setTimeout(function(){controller.abort();}, 8000);
 				fetch(serverUrl.value + "/settings", {
 					method: "GET",
 					signal: controller.signal
@@ -318,7 +330,7 @@
 			}
 			function pingServer(successCallback, errorCallback){
 				var controller = new AbortController();
-				setTimeout(() => controller.abort(), 8000);
+				setTimeout(function(){controller.abort();}, 8000);
 				fetch(serverUrl.value + "/ping", {
 					signal: controller.signal
 				})
@@ -477,7 +489,45 @@
 				});
 			}
 			
-			//--- Messages and animations ---
+			//--- Controls, Messages and animations ---
+
+			var micButton = document.getElementById("micButton");
+			function setMicState(state){
+				micButton.classList.remove("recording", "loading", "reset");
+				if (state == "loading"){
+					micButton.classList.add("loading");
+				}else if (state == "recording"){
+					micButton.classList.add("recording");
+				}else if (state == "reset"){
+					micButton.classList.add("reset");
+				}else{
+					//idle
+				}
+			}
+			var micLongPressTimer = undefined;
+			var micIsLongPress = false;
+			micButton.addEventListener('pointerdown', function(event){
+				clearTimeout(micLongPressTimer);
+				micLongPressTimer = setTimeout(function(){
+					onMicLongPress();
+				}, 1000);
+			});
+			micButton.addEventListener('pointerup', function(event){
+				clearTimeout(micLongPressTimer);
+				if (!micIsLongPress){
+					toggleMic();
+				}else{
+					setMicState("");
+				}
+				micIsLongPress = false;
+			});
+			function onMicLongPress(){
+				micIsLongPress = true;
+				releaseMic(function(){
+					if (micIsLongPress) setMicState("reset");
+					addMessage("Microphone was RELEASED (Long-Press action)");
+				});
+			}
 
 			var textInputElement = document.getElementById("messageText");
 			if (textInputElement){
@@ -491,27 +541,6 @@
 					sendMessage(input.value);
 					input.value = "";
 				}
-			}
-			
-			var messages = document.getElementById('messages');
-			function addMessage(msg){
-				var message;
-				message = document.createElement('li');
-				message.textContent = new Date().toLocaleTimeString() + " - " + msg;
-				if (msg){
-					messages.appendChild(message);
-				}
-				messages.scrollTop = messages.scrollHeight;
-				return message;
-			}
-			function clearMessages(){
-				messages.innerHTML = "<li>Log:</li>";
-			}
-			var maxLogHeight = Math.ceil(window.innerHeight - messages.getBoundingClientRect().top - 58);
-			if (maxLogHeight > 150){
-				messages.style.height = maxLogHeight + "px";
-			}else{
-				messages.style.height = "150px";
 			}
 			
 			var volumeBar = document.getElementById("volumeBar");
@@ -529,18 +558,6 @@
 				}
 				if (val > maxVol) maxVol = val;
 				volumeBar.style.width = Math.round(val/maxVol * 100) + "%";
-			}
-
-			var micButton = document.getElementById("micButton");
-			function setMicState(state){
-				micButton.classList.remove("recording", "loading");
-				if (state == "loading"){
-					micButton.classList.add("loading");
-				}else if (state == "recording"){
-					micButton.classList.add("recording");
-				}else{
-					//idle
-				}
 			}
 
 			var phraseListInput = document.getElementById("phraseList");
@@ -563,12 +580,37 @@
 				});
 			}
 
+			var messages = document.getElementById('messages');
+			function addMessage(msg){
+				var message;
+				message = document.createElement('li');
+				message.textContent = new Date().toLocaleTimeString() + " - " + msg;
+				if (msg){
+					messages.appendChild(message);
+				}
+				messages.scrollTop = messages.scrollHeight;
+				return message;
+			}
+			function clearMessages(){
+				messages.innerHTML = "<li>Log:</li>";
+			}
+			var maxLogHeight = Math.ceil(window.innerHeight - messages.getBoundingClientRect().top - 58);
+			if (maxLogHeight > 150){
+				messages.style.height = maxLogHeight + "px";
+			}else{
+				messages.style.height = "150px";
+			}
+
+			function showInfoModal(msg){
+				var modalContent = document.createElement("div");
+				modalContent.textContent = msg;
+				var mod = createModal(modalContent, "480px", "85%");
+			}
 			function showSourceInfoModal(){
 				var modalContent = document.createElement("div");
 				modalContent.textContent = sourceInfo;
 				var mod = createModal(modalContent, "480px", "85%");
 			}
-
 			function showFeaturesModal(){
 				var modalContent = document.createElement("div");
 				modalContent.textContent = JSON.stringify(availableFeatures, null, 1);
@@ -628,11 +670,13 @@
 			}
 
 			// ON READY
-			
-			setVolume(0);
-			setMicState("idle");
-			getServerInfo();
-
+			if (SepiaVoiceRecorder.notSupported){
+				showInfoModal("SEPIA Web Audio Library not found or not supported (IE11?)!");
+			}else{
+				setVolume(0);
+				setMicState("idle");
+				getServerInfo();
+			}
         </script>
     </body>
 </html>
