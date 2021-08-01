@@ -1,6 +1,7 @@
 """Tools to post-process text results like text2number"""
 
 import re
+from typing import Optional
 
 from text_to_num.lang import LANG
 from text_to_num import alpha2digit
@@ -18,6 +19,30 @@ class TextProcessor():
 
     def process(self, text_input: str):
         """Process string and return new string"""
+
+# Tools:
+
+def search_via_regex(text_in: str, pattern: str) -> Optional[dict]:
+    """Search pattern using regular expression (ignore case)
+    and return dict with 'text_before', 'text_match', 'text_after' or None"""
+    if not text_in:
+        return None
+    pattern = r'(?P<before>^|\W)(?P<match>' + pattern + r')(?P<after>\W|$)'
+    search_res = re.search(pattern, text_in, flags=re.IGNORECASE)
+    if not search_res:
+        return None
+    # first match
+    res_span = search_res.span()
+    text_before = text_in[:res_span[0]] + search_res.group("before")
+    text_match = search_res.group("match")
+    text_after = search_res.group("after") + text_in[res_span[1]:]
+    # parts = re.split(r"\s+", text_match)
+    return {
+        'text_before': text_before,
+        'text_match': text_match,
+        'text_after': text_after,
+    }
+
 
 class TextToNumberProcessor(TextProcessor):
     """Convert numbers written as text ('two hundred', 'zweihundert')
@@ -62,28 +87,22 @@ class DateAndTimeOptimizer(TextProcessor):
     def optimize_time_de(text_in: str):
         """Optimize time presentation for German"""
         opt_text = re.sub(r"(\b)(ein Uhr)(\b)", r"1 Uhr", text_in, flags=re.IGNORECASE)
-        search_res = re.search(r"(\b)(\d{1,2} Uhr \d{1,2})(\b)", text_in, flags=re.IGNORECASE)
-        if search_res:
-            # first match
-            res_span = search_res.span()
-            text_before = opt_text[:res_span[0]] + search_res.group(1)
-            text_match = search_res.group(2)
-            text_after = search_res.group(3) + opt_text[res_span[1]:]
-            parts = re.split(r"\s+", text_match)
-            hour = int(parts[0])
-            minutes = int(parts[2])
-            if hour <= 24 and minutes < 60:
-                # valid times - replace and continue search in rest
-                mid = ":"
-                if minutes < 10:
-                    mid = ":0"
-                opt_text = (text_before + str(hour) + mid + str(minutes) + " Uhr"
-                    + DateAndTimeOptimizer.optimize_time_de(text_after))
-            else:
-                # invalid times - keep and continue search in rest
-                opt_text = (text_before + text_match
-                    + DateAndTimeOptimizer.optimize_time_de(text_after))
-        return opt_text
+        search_res = search_via_regex(opt_text, r"\d{1,2} Uhr \d{1,2}")
+        if not search_res:
+            return opt_text
+        # match
+        parts = re.split(r"\s+", search_res['text_match'])
+        hour = int(parts[0])
+        minutes = int(parts[2])
+        opt_text = search_res['text_before']
+        if hour <= 24 and minutes < 60:
+            # valid times - replace and continue search in rest
+            opt_text += str(hour) + ":" + str(minutes).zfill(2) + " Uhr"
+        else:
+            # invalid times - keep org
+            opt_text += search_res['text_match']
+        # continue search in rest
+        return opt_text + DateAndTimeOptimizer.optimize_time_de(search_res['text_after'])
 
     @staticmethod
     def optimize_time_en(text_in: str):
@@ -93,7 +112,24 @@ class DateAndTimeOptimizer(TextProcessor):
     @staticmethod
     def optimize_date_de(text_in: str):
         """Optimize date presentation for German"""
-        return text_in
+        opt_text = text_in
+        search_res = search_via_regex(opt_text, r"\d{1,2}\. \d{1,2}\.( \d{4}|)")
+        if not search_res:
+            return opt_text
+        # match
+        parts = re.split(r"\s+", search_res['text_match'])
+        day = int(parts[0].replace(".", ""))
+        month = int(parts[1].replace(".", ""))
+        year = parts[2] if len(parts) == 3 else ""
+        opt_text = search_res['text_before']
+        if day <= 31 and month <= 12:
+            # valid date numbers - replace
+            opt_text += str(day).zfill(2) + "." + str(month).zfill(2) + "." + year
+        else:
+            # invalid day/month - keep
+            opt_text += search_res['text_match']
+        # continue search in rest
+        return opt_text + DateAndTimeOptimizer.optimize_date_de(search_res['text_after'])
 
     @staticmethod
     def optimize_date_en(text_in: str):
