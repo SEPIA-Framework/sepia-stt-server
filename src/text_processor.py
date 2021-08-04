@@ -9,10 +9,12 @@ from text_to_num import alpha2digit
 class TextProcessor():
     """Common text processor interface"""
     def __init__(self, language_code: str = None):
-        """Create new processor for specific language"""
+        """Create new processor for specific language.
+        Use language format xx_XX, e.g. de_DE or en_US."""
         self.language_code = language_code
         if self.language_code:
-            self.language_code_short = re.split("[-_]", self.language_code)[0].lower()
+            self.language_code = self.language_code.replace("-", "_")
+            self.language_code_short = re.split("[_]", self.language_code)[0].lower()
         else:
             self.language_code_short = None
         self.supports_language = False # overwrite in actual processor instance
@@ -73,12 +75,14 @@ class DateAndTimeOptimizer(TextProcessor):
     def __init__(self, language_code: str = None):
         """Create processor and check language support"""
         super().__init__(language_code)
+        self.time_optimizer = None
+        self.date_optimizer = None
         # Currently supported languages: DE, EN
         if self.language_code_short in ["en", "de"]:
             self.supports_language = True
             if self.language_code_short == "de":
                 self.time_optimizer = DateAndTimeOptimizer.optimize_time_de
-                self.date_optimizer = DateAndTimeOptimizer.optimize_date_de
+                self.date_optimizer = DateAndTimeOptimizer.optimize_date_ddmmyyyy_dot
             elif self.language_code_short == "en":
                 self.time_optimizer = DateAndTimeOptimizer.optimize_time_en
                 self.date_optimizer = DateAndTimeOptimizer.optimize_date_en
@@ -86,7 +90,8 @@ class DateAndTimeOptimizer(TextProcessor):
     @staticmethod
     def optimize_time_de(text_in: str):
         """Optimize time presentation for German"""
-        opt_text = re.sub(r"(\b)(ein Uhr)(\b)", r"1 Uhr", text_in, flags=re.IGNORECASE)
+        opt_text = re.sub(r"(^|\W)(ein Uhr)($|\W)",
+            r"\g<1>1 Uhr\g<3>", text_in, flags=re.IGNORECASE)
         search_res = search_via_regex(opt_text, r"\d{1,2} Uhr \d{1,2}")
         if not search_res:
             return opt_text
@@ -107,11 +112,34 @@ class DateAndTimeOptimizer(TextProcessor):
     @staticmethod
     def optimize_time_en(text_in: str):
         """Optimize time presentation for English"""
-        return text_in
+        opt_text = re.sub(r"(^|\W)(one (a\.m\.|am|p\.m\.|pm|o\Wclock))($|\W)",
+            r"\g<1>1 \g<3>\g<4>", text_in, flags=re.IGNORECASE)
+        # TODO: alarm/timer/reminder for/to 8 30 
+        search_res = search_via_regex(opt_text,
+            r"\d{1,2} \d{1,2}(?:\s|)(a\.m\.|am|p\.m\.|pm|o\Wclock)")
+        if not search_res:
+            return opt_text
+        # match
+        nums = re.sub(r"(.*\d)(.*)", r"\g<1>", search_res['text_match'])
+        time_ind = search_res['text_match'].replace(nums, "").strip()
+        # time_ind = time_ind.lower().replace("am", "a.m.").replace("pm", "p.m.")
+        # time_ind = time_ind.replace("o clock", "o'clock")
+        parts = re.split(r"\s+", nums)
+        hour = int(parts[0])
+        minutes = int(parts[1])
+        opt_text = search_res['text_before']
+        if hour <= 24 and minutes < 60:
+            # valid times - replace and continue search in rest
+            opt_text += str(hour) + ":" + str(minutes).zfill(2) + " " + time_ind
+        else:
+            # invalid times - keep org
+            opt_text += search_res['text_match']
+        # continue search in rest
+        return opt_text + DateAndTimeOptimizer.optimize_time_de(search_res['text_after'])
 
     @staticmethod
-    def optimize_date_de(text_in: str):
-        """Optimize date presentation for German"""
+    def optimize_date_ddmmyyyy_dot(text_in: str):
+        """Optimize date presentation for format 'dd.MM.yyyy'"""
         opt_text = text_in
         search_res = search_via_regex(opt_text, r"\d{1,2}\. \d{1,2}\.( \d{4}|)")
         if not search_res:
@@ -129,7 +157,8 @@ class DateAndTimeOptimizer(TextProcessor):
             # invalid day/month - keep
             opt_text += search_res['text_match']
         # continue search in rest
-        return opt_text + DateAndTimeOptimizer.optimize_date_de(search_res['text_after'])
+        return (opt_text +
+            DateAndTimeOptimizer.optimize_date_ddmmyyyy_dot(search_res['text_after']))
 
     @staticmethod
     def optimize_date_en(text_in: str):
@@ -138,14 +167,13 @@ class DateAndTimeOptimizer(TextProcessor):
 
     def process(self, text_input: str):
         """Take input text and optimize date and time presentation"""
-        if text_input and self.supports_language:
-            # optimize
-            opt_text = self.time_optimizer(text_input)
-            opt_text = self.date_optimizer(opt_text)
-            return opt_text
-        elif text_input:
-            # return unchanged
-            return text_input
-        else:
-            # return empty
+        if not text_input:
             return ""
+        opt_text = text_input
+        # optimize time:
+        if self.time_optimizer:
+            opt_text = self.time_optimizer(opt_text)
+        # optimize date:
+        if self.date_optimizer:
+            opt_text = self.date_optimizer(opt_text)
+        return opt_text

@@ -8,7 +8,7 @@ from vosk import Model, SpkModel, KaldiRecognizer, SetLogLevel
 
 from launch import settings
 from engine_interface import EngineInterface
-from text_processor import TextToNumberProcessor
+from text_processor import TextToNumberProcessor, DateAndTimeOptimizer
 
 # Vosk log level - -1: off, 0: normal, 1: more verbose
 SetLogLevel(-1)
@@ -25,7 +25,8 @@ class VoskProcessor(EngineInterface):
         self._sample_rate = options.get("samplerate", float(16000))
         self._language = options.get("language")
         if self._language:
-            self.language_code_short = re.split("[-_]", self._language)[0].lower()
+            self._language = self._language.replace("-", "_")  # make sure we have xx_XX format
+            self.language_code_short = re.split("[_]", self._language)[0].lower()
         else:
             self.language_code_short = None
         self._asr_model_path = options.get("model", None)
@@ -174,10 +175,10 @@ class VoskProcessor(EngineInterface):
         if last_result_was_final and not self._continuous_mode:
             # Send final result (because we haven't done it yet)
             await self._send(self._final_result, True)
-            # self._recognizer.Reset()  # TODO: we skip this for now to prevent ERROR if already reset
+            # self._recognizer.Reset()  # TODO: we skip this to prevent ERROR if already reset
         elif last_result_was_final:
             # We don't need to do anything but reset ... right?
-            # self._recognizer.Reset()  # TODO: we skip this for now to prevent ERROR if already reset
+            # self._recognizer.Reset()  # TODO: we skip this to prevent ERROR if already reset
             pass
         else:
             # Request final
@@ -199,8 +200,10 @@ class VoskProcessor(EngineInterface):
         # Post-processing?
         if is_final and transcript and self._optimize_final_result:
             # Optimize final transcription
-            text_proc = TextToNumberProcessor(self._language)
-            transcript = text_proc.process(transcript)
+            text2num_proc = TextToNumberProcessor(self._language)
+            dt_optimizer = DateAndTimeOptimizer(self._language)
+            transcript = text2num_proc.process(transcript)
+            transcript = dt_optimizer.process(transcript)
         await self.send_transcript(
             transcript=transcript,
             is_final=is_final,
