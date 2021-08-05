@@ -43,6 +43,10 @@ sudo docker run --name=sepia-stt -p 20741:20741 -it sepia/stt-server:[platform-t
 
 To test the server visit: `http://localhost:20741` if you are on the same machine or `http://[server-IP]:20741` if you are in the same network (NOTE: custom recordings via microphone will only work using localhost or a HTTPS URL!).
 
+<p align="center">
+  <img src="screenshots/stt-recorder-demo.png" alt="SEPIA STT Recorder Demo"/>
+</p>
+
 ## Server Settings
 
 Most of the settings can be handled easily via the [server.conf settings file](src/server.conf). Please check out the file to see whats possible.
@@ -74,7 +78,7 @@ and thus the link to your server must be secure as well (e.g. use a real domain 
 
 ## Develop your own client
 
-See the separate [API docs](API.md) file or check out the [Javascript client class](src/www/audio-modules/shared/sepia-stt-socket-client.js) and the [test page](src/www/test.html) source-code.  
+See the separate [API docs](API.md) file or check out the [Javascript client class](src/www/audio-modules/shared/sepia-stt-socket-client.js) and the [test page](src/www/test-page.html) source-code.  
   
 Demo clients:
 - Server test page(s): `http://localhost:20741` (with microphone) or `http://[server-IP]:20741` (no microphone due to "insecure" origin)

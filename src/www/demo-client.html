@@ -445,7 +445,7 @@
 
 			var phraseListInput = document.getElementById("phraseList");
 			if (phraseListInput){
-				phraseListInput.title = 'Enter phrases or words seperated by comma. Optionally add "[unk]". Write numbers as words. Use only letters.';
+				phraseListInput.title = 'Enter phrases or words seperated by comma. Optionally add [unk] for "unknown". Write numbers as words. Use only letters.';
 				phraseListInput.addEventListener("blur", function(){
 					if (phraseListInput.value && phraseListInput.value.trim()){
 						phrases = phraseListInput.value.trim().split(/\s*(?:,|;|\.$|\. )\s*/g);

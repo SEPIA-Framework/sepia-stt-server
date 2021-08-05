@@ -23,8 +23,10 @@
     <body>
 		<div class="page">
 			<h1><button onclick="backToRoot()" style="margin: 0 16px 0 0; border-radius: 15px; font-size: 14px;">&#x2630;</button>SEPIA STT Server - Developer Test Page</h1>
-			<p>This is the test page intended for <b>developers</b> using the SEPIA STT server. Use the microphone to record audio or choose a file (URL) then connect to the server, send the 'welcome' event and stream the last recording to get a transcription.</p>
-			<p>The web interface is powered by: <a href="https://github.com/SEPIA-Framework/sepia-web-audio" target=_blank>SEPIA Web Audio library</a>. App with advanced integration: <a href="https://github.com/SEPIA-Framework/sepia-html-client-app" target=_blank>SEPIA Client</a>.</p>
+			<p>This is the test page intended for <b>developers</b> using the SEPIA STT server. Use the microphone to record audio or choose a file (URL) then connect to the server,
+			send the 'welcome' event and stream the last recording to get a transcription. A simpler demo can be found here: <a href="demo-client.html">client demo</a>.</p>
+			<p>The web interface is powered by: <a href="https://github.com/SEPIA-Framework/sepia-web-audio" target=_blank>SEPIA Web Audio library</a>.
+			App with advanced integration: <a href="https://github.com/SEPIA-Framework/sepia-html-client-app" target=_blank>SEPIA Client</a>.</p>
 			<h2>Recorder</h2>
 			<div class="section">
 				<div class="group"><label>Start/Stop:</label><button id="micButton"></button></div>
@@ -34,7 +36,7 @@
 			<div class="section">
 				<div class="group">
 					<label>Load audio file (URL):</label>
-					<input id="audioFileUrl" type="text" value="test-audio/easy_counting_en2.ogg" style="width: 256px; max-width: 100%;">
+					<input id="audioFileUrl" type="text" value="test-audio/easy_counting_en.ogg" style="width: 256px; max-width: 100%;">
 					<button onclick="loadAudioFile()">LOAD</button>
 				</div>
 				<div class="group"><label>Source Info:</label><span id="recoderInfo" style="flex: 1 1 auto;">-updated during rec.-</span></div>
@@ -403,6 +405,8 @@
 						setModel(activeOptions.model || "", false);
 						if (activeOptions.phrases && phrases && phrases.length){
 							activeOptions.phrases = phrases;
+						}else{
+							activeOptions.phrases = [];
 						}
 					}
 				}
@@ -562,7 +566,7 @@
 
 			var phraseListInput = document.getElementById("phraseList");
 			if (phraseListInput){
-				phraseListInput.title = 'Enter phrases or words seperated by comma. Optionally add "[unk]".';
+				phraseListInput.title = 'Enter phrases or words seperated by comma. Optionally add [unk] for "unknown". Write numbers as words. Use only letters.';
 				phraseListInput.addEventListener("blur", function(){
 					if (phraseListInput.value && phraseListInput.value.trim()){
 						phrases = phraseListInput.value.trim().split(/\s*(?:,|;|\.$|\. )\s*/g);
@@ -576,6 +580,8 @@
 					//add to options?
 					if (activeOptions.phrases && phrases && phrases.length){
 						activeOptions.phrases = phrases;
+					}else{
+						activeOptions.phrases = [];
 					}
 				});
 			}
