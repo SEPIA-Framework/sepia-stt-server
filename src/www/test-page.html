@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html>
+    <head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+        
+		<title>STT-Server</title>
+		<link rel="shortcut icon" type="image/x-icon" href="favicon.ico">
+		<link rel="stylesheet" href="main.css">
+		<script type="text/javascript" src="common.js"></script>
+		
+		<!-- SEPIA Web Audio Lib -->
+		<script type="text/javascript" src="sepia-web-audio.min.js?v=0.9.7"></script>
+		<script type="text/javascript" src="sepia-recorder.js"></script>
+		<script>
+			//set correct modules folder
+			if (window.SepiaFW) SepiaFW.webAudio.defaultProcessorOptions.moduleFolder = "audio-modules";
+		</script>
+		
+		<style>
+		</style>
+    </head>
+    <body>
+		<div class="page">
+			<h1><button onclick="backToRoot()" style="margin: 0 16px 0 0; border-radius: 15px; font-size: 14px;">&#x2630;</button>SEPIA STT Server - Developer Test Page</h1>
+			<p>This is the test page intended for <b>developers</b> using the SEPIA STT server. Use the microphone to record audio or choose a file (URL) then connect to the server,
+			send the 'welcome' event and stream the last recording to get a transcription. A simpler demo can be found here: <a href="demo-client.html">client demo</a>.</p>
+			<p>The web interface is powered by: <a href="https://github.com/SEPIA-Framework/sepia-web-audio" target=_blank>SEPIA Web Audio library</a>.
+			App with advanced integration: <a href="https://github.com/SEPIA-Framework/sepia-html-client-app" target=_blank>SEPIA Client</a>.</p>
+			<h2>Recorder</h2>
+			<div class="section">
+				<div class="group"><label>Start/Stop:</label><button id="micButton"></button></div>
+				<div class="group"><label>Gain:</label><input id="microphoneGain" class="small" type="number" value="1.0"></div>
+				<div class="group"><label>Vol. Meter (green = good):</label><div id="volumeMeter"><div id="volumeBar"></div></div></div>
+			</div>
+			<div class="section">
+				<div class="group">
+					<label>Load audio file (URL):</label>
+					<input id="audioFileUrl" type="text" value="test-audio/easy_counting_en.ogg" style="width: 256px; max-width: 100%;">
+					<button onclick="loadAudioFile()">LOAD</button>
+				</div>
+				<div class="group"><label>Source Info:</label><span id="recoderInfo" style="flex: 1 1 auto;">-updated during rec.-</span></div>
+			</div>
+			<h2>Connection</h2>
+			<div class="section">
+				<div class="group"><label>Server:</label><input type="text" id="serverUrl" autocomplete="off" value=""/></div>
+				<div class="group"><label>Client-ID:</label><input type="text" id="clientId" autocomplete="off" value="any"/></div>
+				<div class="group"><label>Access Token:</label><input type="text" id="accessToken" autocomplete="off" value="test1234"/></div>
+			</div>
+			<div class="section">
+				<label>Tests &#x2615;:</label>
+				<div class="group">
+					<button onclick="openConnection()">OPEN</button>
+					<button onclick="sendWelcome()">SEND WELCOME</button>
+					<button onclick="sendMessage('test');">TEST MESSAGE</button>
+					<button onclick="sendBytes()">STREAM LAST RECORDING</button>
+					<button onclick="closeConnection()">CLOSE</button>
+				</div>
+			</div>
+			<h2>Engine Settings <button class="variant-2" onclick="getServerInfo()" style="margin: 0 0 0 16px;">RELOAD</button></h2>
+			<div class="section">
+				<div class="group"><label>Engine:</label><span id="asrEngine">-?-</span></div>
+				<div class="group"><label>Language:</label><select id="languageSelect"><option selected>-?-</option></select></div>
+				<div class="group"><label>Model:</label><select id="modelSelect"><option selected>-?-</option></select></div>
+				<div class="group"><label>Features:</label><button id="asrFeaturesBtn" class="round" onclick="showFeaturesModal()">i</button></div>
+				<div class="group"><label>Options:</label><button id="asrOptionsBtn" class="round" onclick="showOptionsModal()">&#x270E;</button><!--&#x2699;--></div>
+			</div>
+			<div class="section">
+				<div class="group" style="flex: 1 0 auto;">
+					<label>Phrases:</label><input id="phraseList" style="flex: 1 0 auto;" type="text" autocomplete="off" value="" 
+						placeholder="A list of phrases or words to recognize (if supported by model)"/>
+				</div>
+			</div>
+			<h2>Messages <button class="variant-2" onclick="clearMessages()" style="margin: 0 0 0 16px;">CLEAR</button></h2>
+			<!--<div class="section">
+				<div class="group" style="flex: 1 1 auto;">
+					<label>Message:</label>
+					<input type="text" id="messageText" autocomplete="off"/>
+					<button onclick="sendTextFromIput()">Send</button>
+				</div>
+			</div>-->
+			<div>
+				<ul id='messages'>
+					<li>Log:</li>
+				</ul>
+			</div>
+		</div>
+        <script>
+			if (!window.SepiaVoiceRecorder){
+				SepiaVoiceRecorder = {notSupported: true};	//Library not found or not supported (browser <= IE11)
+			}
+
+			//--- Navigation ---
+
+			function backToRoot(){
+				location.href = "index.html";
+			}
+
+			//--- Recorder ---
+			
+			var volumeThresholds = [0.05, 10];		//too low/too high
+			var gainNode = document.getElementById("microphoneGain");
+			
+			var isLoading = false;
+			var isRecording = false;
+			var waveBuffering = false;
+			var lastRecording;
+			var sourceInfo = "-?-";
+			var sourceInfoEle = document.getElementById("recoderInfo");
+
+			function loadAudioFile(){
+				var fileUrl = document.getElementById('audioFileUrl').value;
+				SepiaVoiceRecorder.decodeAudioFileToInt16Mono(fileUrl, undefined, undefined, function(samples){
+					lastRecording = samples;
+					var targetEle = addMessage("WAV Result:");
+					SepiaVoiceRecorder.addAudioElementToPage(targetEle, samples, "audio/wav");
+					addMessage(undefined);
+					sourceInfo = "File: " + fileUrl;
+					sourceInfoEle.innerHTML = "<span>File</span>";
+					sourceInfoEle.classList.remove("with-button");
+				}, function(err){
+					addMessage("ERROR - Failed to load/decode file: " + (err? err.message || err.name || "check log" : "check log"));
+					console.error("Failed to load/decode file", err);
+				});
+			}
+			
+			function toggleMic(){
+				if (!isLoading && !isRecording){
+					isLoading = true;
+					setMicState("loading");
+					//for this demo we create a new recorder each time
+					SepiaVoiceRecorder.stopAndReleaseIfActive(function(){
+						SepiaFW.webAudio.tryNativeStreamResampling = false;		//try native resampling?
+						SepiaVoiceRecorder.create({
+							gain: +gainNode.value,
+							//fileUrl: "test-audio/hallo_dies_ist_ein_test.wav",
+							//recordingLimitMs: 10000
+						});
+					});
+					
+				}else if (isRecording){
+					SepiaVoiceRecorder.stop();
+				
+				}else if (isLoading){
+					isLoading = true;
+					setMicState("loading");
+					SepiaVoiceRecorder.stopAndReleaseIfActive(function(){
+						isLoading = false;
+						isRecording = false;
+						setMicState("idle");
+					});
+				}
+			}
+			function releaseMic(callback){
+				SepiaVoiceRecorder.stopAndReleaseIfActive(function(){
+					isLoading = false;
+					isRecording = false;
+					setMicState("idle");
+					if (callback) callback();
+				});
+			}
+			function onMicError(){
+				setMicState("error");
+				isRecording = false;
+				isLoading = false;
+			}
+			
+			SepiaVoiceRecorder.onProcessorReady = function(info){
+				console.log("SepiaVoiceRecorder -  onProcessorReady", info);
+				sourceInfo = "Sample-rate: " + info.targetSampleRate 
+					+ "Hz (factor: " + (info.inputSampleRate/info.targetSampleRate) + ")\nDevice Label:\n" + (info.sourceInfo? info.sourceInfo.label : "");
+				sourceInfoEle.classList.add("with-button");
+				sourceInfoEle.innerHTML = "<button class='round' onclick='showSourceInfoModal();' title='" + sourceInfo + "'>i</button>";
+				setMicState("idle");
+				isLoading = false;
+				isRecording = false;
+				waveBuffering = false;
+				SepiaVoiceRecorder.start();
+			}
+			SepiaVoiceRecorder.onProcessorInitError = function(err){
+				console.error("SepiaVoiceRecorder -  onProcessorInitError", err);
+				onMicError();
+				addMessage("ERROR - onProcessorInitError: " + err.message);
+				if (location.protocol == "http:" && !location.origin.indexOf("http://localhost") == 0){
+					sourceInfoEle.innerHTML = "<span style='color: red;'>Init. ERROR - Likely because of insecure origin (no HTTPS or localhost)</span>";
+					sourceInfoEle.classList.remove("with-button");
+				}else{
+					sourceInfoEle.innerHTML = "<span style='color: red;'>Init. ERROR - " + err.message + "</span>";
+					sourceInfoEle.classList.remove("with-button");
+				}
+			}
+			SepiaVoiceRecorder.onProcessorError = function(err){
+				console.error("SepiaVoiceRecorder -  onProcessorError", err);
+				onMicError();
+				addMessage("ERROR - onProcessorError: " + err.name);
+			}
+
+			SepiaVoiceRecorder.onAudioStart = function(info){
+				console.log("SepiaVoiceRecorder -  onAudioStart");
+				isRecording = true;
+				setMicState("recording");
+				addMessage("Microphone is OPEN");
+			}
+			SepiaVoiceRecorder.onAudioEnd = function(info){
+				console.log("SepiaVoiceRecorder -  onAudioEnd");
+				isRecording = false;
+				setMicState("idle");
+				addMessage("Microphone is CLOSED");
+			}
+
+			SepiaVoiceRecorder.onProcessorRelease = function(info){
+				console.log("SepiaVoiceRecorder -  onProcessorRelease");
+				setMicState("idle");
+				isRecording = false;
+				isLoading = false;
+			}
+
+			SepiaVoiceRecorder.onDebugLog = function(msg){}
+			
+			SepiaVoiceRecorder.onResamplerData = function(data){
+				//console.log("SepiaVoiceRecorder -  onResamplerData", data.rms);
+				setVolume(data.rms);
+			}
+			SepiaVoiceRecorder.onWaveEncoderStateChange = function(state){
+				if (state.isOpen == true){
+					if (!waveBuffering) addMessage("WAV Recorder - Started capturing");
+					waveBuffering = true;
+				}else if (state.isOpen === false){
+					if (waveBuffering){
+						addMessage("WAV Recorder - Stopped capturing (Note: this happens when mic. closes or 500KB capture limit is reached ~ 16s)");
+					}
+					waveBuffering = false;
+				}
+			}
+			SepiaVoiceRecorder.onWaveEncoderAudioData = function(waveData){
+				//console.log("SepiaVoiceRecorder -  onWaveEncoderAudioData", waveData);
+				lastRecording = waveData;
+				var targetEle = addMessage("WAV Result:");
+				SepiaVoiceRecorder.addAudioElementToPage(targetEle, waveData, "audio/wav");
+				addMessage(undefined);
+			}
+
+			//--- Server ---
+
+			var serverUrl = document.getElementById("serverUrl");
+			serverUrl.value = location.href.replace(/(.*)\/www\/(.*?.html|)$/, "$1"); //location.origin;
+
+			var languageCode = "";
+			var asrModel = "";
+			var availableFeatures = [];
+			var activeOptions = {};
+			var phrases = [];
+
+			function handleServerSettings(settings){
+				if (settings.version){
+					addMessage("INFO - Server version: " + settings.version);
+				}
+				if (settings.engine){
+					addMessage("INFO - Active engine: " + settings.engine);
+					document.getElementById("asrEngine").textContent = settings.engine;
+				}
+				if (settings.languages){
+					buildSelectOptions(languageSelector, settings.languages, "Automatic");
+					languageCode = languageSelector.value;
+					addMessage("INFO - Available ASR languages: " + JSON.stringify(settings.languages, null, 2));
+				}
+				if (settings.models){
+					buildSelectOptions(modelSelector, settings.models, "Automatic");
+					asrModel = modelSelector.value;
+					addMessage("INFO - Available ASR models: " + JSON.stringify(settings.models, null, 2));
+				}
+				if (settings.features){
+					availableFeatures = settings.features;
+					document.getElementById("asrFeaturesBtn").title = JSON.stringify(availableFeatures, null, 1);
+				}else{
+					availableFeatures = [];
+				}
+			}
+			function setLanguage(newLang, resetModel){
+				//NOTE: this assumes 'language' and 'model' are always available options!
+				languageCode = newLang;
+				languageSelector.value = newLang;
+				activeOptions.language = languageCode;
+				if (resetModel){
+					delete activeOptions.model; //since model has higher prio we remove that
+					modelSelector.value = "";
+				}
+			}
+			function setModel(newModel, resetLanguage){
+				//NOTE: this assumes 'language' and 'model' are always available options!
+				asrModel = newModel;
+				modelSelector.value = newModel;
+				activeOptions.model = asrModel;
+				if (resetLanguage){
+					delete activeOptions.language; //since model has higher prio we remove that
+					languageSelector.value = "";
+				}
+			}
+
+			var languageSelector = document.getElementById("languageSelect");
+			languageSelector.addEventListener("change", function(e){
+				setLanguage(languageSelector.value, true);
+			});
+			var modelSelector = document.getElementById("modelSelect");
+			modelSelector.addEventListener("change", function(e){
+				setModel(modelSelector.value, true);
+			});
+
+			//--- HTTP ---
+
+			function getServerInfo(){
+				addMessage("INFO - Loading server settings...");
+				var controller = new AbortController();
+				setTimeout(function(){controller.abort();}, 8000);
+				fetch(serverUrl.value + "/settings", {
+					method: "GET",
+					signal: controller.signal
+				}).then(function(res){
+					if (res.ok){
+						return res.json();
+					}else{
+						throw {"name": "FetchError", "message": res.statusText, "code": res.status};
+					}
+				}).then(function(json){
+					console.log("Server Info", json);
+					if (json && json.settings){
+						handleServerSettings(json.settings);
+					}
+				}).catch(function(err){
+					console.error("Server Info Fetch ERROR", err);
+				});
+			}
+			function pingServer(successCallback, errorCallback){
+				var controller = new AbortController();
+				setTimeout(function(){controller.abort();}, 8000);
+				fetch(serverUrl.value + "/ping", {
+					signal: controller.signal
+				})
+				.then(function(res){ return res.json(); })
+				.then(function(json){
+					console.log("Ping", json);
+					if (successCallback) successCallback(json);
+				})
+				.catch(function(err){
+					console.error("Ping", err);
+					if (errorCallback) errorCallback(err);
+				});
+			}
+		
+			//--- WebSocket ---
+			
+			var protocol = (serverUrl.value.indexOf("https:") == 0)? "wss:" : "ws:";
+			var socketHost = serverUrl.value.replace(/^(https:|http:)/, protocol).replace(/\/$/, "") + "/socket";
+			var ws;
+
+			var msgId = 0;
+			
+			function openConnection(){
+				if (ws && ws.readyState == ws.OPEN){
+					addMessage("Connection already OPEN");
+					return;
+				}
+
+				ws = new WebSocket(socketHost);
+				
+				ws.onopen = function(){
+					addMessage("Connection OPEN");
+				}
+				
+				ws.onclose = function(){
+					addMessage("Connection CLOSED");
+				}
+				
+				ws.onmessage = function(event){
+					if (event && event.data && typeof event.data == "string"){
+						try {
+							handleSocketMessage(JSON.parse(event.data));
+						}catch(err){
+							addMessage("ERROR - message handler saw invlaid JSON? " + err.name);
+						}
+					}
+				}
+				
+				ws.onerror = function(error){
+					handleSocketError(error);
+				}
+			}
+
+			function closeConnection(){
+				if (ws && ws.readyState == ws.OPEN) ws.close();
+			}
+            			
+			function handleSocketMessage(msgJson){
+				if (msgJson.type == "error"){
+					handleSocketError(msgJson);
+				}else{
+					addMessage(JSON.stringify(msgJson));	//DEBUG
+					if (msgJson.type == "ping"){
+						//TODO: send only after welcome
+						sendJson({type: "pong", msg_id: msgJson.msg_id});
+					}else if (msgJson.type == "welcome"){
+						activeOptions = msgJson.info? msgJson.info.options : {};
+						//overwrite custom settings
+						setLanguage(activeOptions.language || "", false);
+						setModel(activeOptions.model || "", false);
+						if (activeOptions.phrases && phrases && phrases.length){
+							activeOptions.phrases = phrases;
+						}else{
+							activeOptions.phrases = [];
+						}
+					}
+				}
+			}
+			function handleSocketError(err){
+				var msg = (err && err.name)? (err.name + " - " + (err.message || "?")) : "?";
+				addMessage("ERROR: " + msg);
+				//Errors are not acceptable :-p - close in any case
+				closeConnection();
+			}
+
+			function sendJson(json){
+				if (ws && ws.readyState == ws.OPEN){
+					ws.send(JSON.stringify(json));
+				}else{
+					addMessage("INFO: Connection is closed");
+				}
+			}
+			function sendBytes(){
+				if (!lastRecording){
+					addMessage("INFO: Record audio first");
+					return;
+				}
+				if (!ws || !ws.readyState == ws.OPEN){
+					addMessage("INFO: Open connection first");
+					return;
+				}
+				var orgLength = lastRecording.byteLength;
+				console.log("Sending approx. " + Math.round(orgLength/2/16000) + "s of audio in chunks of 512 (16bit)");
+				var n = Math.floor(orgLength/2/512);
+				var rest = orgLength - (n*2*512);
+				var totalSent = 0;
+				var chunks = [];
+				for (let i=0; i<(orgLength - rest); i+=1024){
+					chunks.push(lastRecording.buffer.slice(i, i + 1024));
+				}
+				chunks.push(lastRecording.buffer.slice(n*1024, n*1024 + rest));
+				var sentN = 0;
+				var completeCallback = function(){
+					console.log("Sent " + totalSent + " of " + orgLength + " bytes");	//DEBUG
+					sendAudioEnd(orgLength, false);
+				};
+				chunks.forEach(function(b, j){
+					//we don't want to send all at once ...
+					setTimeout(function(){
+						if (ws && ws.readyState == ws.OPEN){
+							ws.send(b);
+							totalSent += b.byteLength;
+						}
+						sentN++;
+						if (sentN >= chunks.length){
+							//console.log("sent " + j, b.byteLength);	//DEBUG
+							completeCallback();
+						}
+					}, j*15);
+				});
+			}
+			function sendMessage(text){
+				sendJson({
+					"type": "chat",
+					"data": {"text": text},
+					"msg_id": ++msgId
+				});
+			}
+			function sendWelcome(text){
+				var clientId = document.getElementById("clientId");
+				var accessToken = document.getElementById("accessToken");
+				sendJson({
+					"type": "welcome",
+					"data": activeOptions,
+					"client_id": clientId.value,
+					"access_token": accessToken.value,
+					"msg_id": ++msgId
+				});
+			}
+			function sendAudioEnd(byteLength, bufferOrTimeLimit){
+				sendJson({
+					"type": "audioend",
+					"data": {
+						"byteLength": byteLength,
+						"bufferOrTimeLimit": bufferOrTimeLimit
+					},
+					"msg_id": ++msgId
+				});
+			}
+			
+			//--- Controls, Messages and animations ---
+
+			var micButton = document.getElementById("micButton");
+			function setMicState(state){
+				micButton.classList.remove("recording", "loading", "reset");
+				if (state == "loading"){
+					micButton.classList.add("loading");
+				}else if (state == "recording"){
+					micButton.classList.add("recording");
+				}else if (state == "reset"){
+					micButton.classList.add("reset");
+				}else{
+					//idle
+				}
+			}
+			var micLongPressTimer = undefined;
+			var micIsLongPress = false;
+			micButton.addEventListener('pointerdown', function(event){
+				clearTimeout(micLongPressTimer);
+				micLongPressTimer = setTimeout(function(){
+					onMicLongPress();
+				}, 1000);
+			});
+			micButton.addEventListener('pointerup', function(event){
+				clearTimeout(micLongPressTimer);
+				if (!micIsLongPress){
+					toggleMic();
+				}else{
+					setMicState("");
+				}
+				micIsLongPress = false;
+			});
+			function onMicLongPress(){
+				micIsLongPress = true;
+				releaseMic(function(){
+					if (micIsLongPress) setMicState("reset");
+					addMessage("Microphone was RELEASED (Long-Press action)");
+				});
+			}
+
+			var textInputElement = document.getElementById("messageText");
+			if (textInputElement){
+				textInputElement.addEventListener("keyup", function(event){
+					if (event.key === "Enter"){
+						sendTextFromIput(this);
+					}
+				});
+				function sendTextFromIput(input){
+					if (!input) input = textInputElement;
+					sendMessage(input.value);
+					input.value = "";
+				}
+			}
+			
+			var volumeBar = document.getElementById("volumeBar");
+			var volBarPassedCheck = false;
+			var maxVol = 0.02;
+			function setVolume(val){
+				if (!volBarPassedCheck){
+					if (val < volumeThresholds[0] || val > volumeThresholds[1]){
+						volumeBar.style.background = "#f04";	//bad
+					}else{
+						volumeBar.style.background = "#0f4";	//good
+						volBarPassedCheck = true;
+						setTimeout(function(){ volBarPassedCheck = false; }, 2000);
+					}
+				}
+				if (val > maxVol) maxVol = val;
+				volumeBar.style.width = Math.round(val/maxVol * 100) + "%";
+			}
+
+			var phraseListInput = document.getElementById("phraseList");
+			if (phraseListInput){
+				phraseListInput.title = 'Enter phrases or words seperated by comma. Optionally add [unk] for "unknown". Write numbers as words. Use only letters.';
+				phraseListInput.addEventListener("blur", function(){
+					if (phraseListInput.value && phraseListInput.value.trim()){
+						phrases = phraseListInput.value.trim().split(/\s*(?:,|;|\.$|\. )\s*/g);
+						for (let i=0; i<phrases.length; i++){
+							phrases[i] = phrases[i].toLowerCase();
+						}
+					}else{
+						phrases = [];
+					}
+					console.log("phrases", phrases);
+					//add to options?
+					if (activeOptions.phrases && phrases && phrases.length){
+						activeOptions.phrases = phrases;
+					}else{
+						activeOptions.phrases = [];
+					}
+				});
+			}
+
+			var messages = document.getElementById('messages');
+			function addMessage(msg){
+				var message;
+				message = document.createElement('li');
+				message.textContent = new Date().toLocaleTimeString() + " - " + msg;
+				if (msg){
+					messages.appendChild(message);
+				}
+				messages.scrollTop = messages.scrollHeight;
+				return message;
+			}
+			function clearMessages(){
+				messages.innerHTML = "<li>Log:</li>";
+			}
+			var maxLogHeight = Math.ceil(window.innerHeight - messages.getBoundingClientRect().top - 58);
+			if (maxLogHeight > 150){
+				messages.style.height = maxLogHeight + "px";
+			}else{
+				messages.style.height = "150px";
+			}
+
+			function showInfoModal(msg){
+				var modalContent = document.createElement("div");
+				modalContent.textContent = msg;
+				var mod = createModal(modalContent, "480px", "85%");
+			}
+			function showSourceInfoModal(){
+				var modalContent = document.createElement("div");
+				modalContent.textContent = sourceInfo;
+				var mod = createModal(modalContent, "480px", "85%");
+			}
+			function showFeaturesModal(){
+				var modalContent = document.createElement("div");
+				modalContent.textContent = JSON.stringify(availableFeatures, null, 1);
+				var mod = createModal(modalContent, "480px", "85%");
+			}
+			function showOptionsModal(){
+				var modalContent = document.createElement("div");
+				modalContent.innerHTML = "<p>NOTE: Engine options will be updated during 'welcome' event</p>";
+				var optionsBox = document.createElement("textarea");
+				optionsBox.spellcheck = false;
+				optionsBox.textContent = JSON.stringify(activeOptions, null, 1);
+				/* Vosk example:
+				{
+					"language": languageCode,
+					"samplerate": 16000,
+					"alternatives": 0,
+					"continuous": false,
+					"words": false,
+					"speaker": true,
+					"phrases": ["wann", "tuch", "dreh", "vor", "weiß", "sechs", "seven", "ey", "nein", "[unk]"]
+				}
+				*/
+				modalContent.appendChild(optionsBox);
+				var storeBtn = document.createElement("button");
+				storeBtn.textContent = "Store";
+				storeBtn.onclick = function(){
+					try {
+						activeOptions = JSON.parse(optionsBox.value);
+						mod.closeModal();
+					}catch (error){
+						storeBtn.textContent = "Store (Check JSON)";
+						storeBtn.style.background = "#f05";
+						storeBtn.style.color = "#fff";
+					}
+				};
+				var cancelBtn = document.createElement("button");
+				cancelBtn.textContent = "Cancel";
+				cancelBtn.onclick = function(){
+					mod.closeModal();
+				};
+				modalContent.appendChild(storeBtn);
+				modalContent.appendChild(cancelBtn);
+				var mod = createModal(modalContent, "480px", "85%");
+			}
+
+			function buildSelectOptions(selector, optArray, defaultName){
+				selector.innerHTML = "<option value=''>" + defaultName + "</option>";
+				optArray.forEach(function(val, i){
+					var opt = document.createElement("option");
+					opt.textContent = val;
+					opt.value = val;
+					if (i == 0){
+						opt.selected = true;
+					}
+					selector.appendChild(opt);
+				});
+			}
+
+			// ON READY
+			if (SepiaVoiceRecorder.notSupported){
+				showInfoModal("SEPIA Web Audio Library not found or not supported (IE11?)!");
+			}else{
+				setVolume(0);
+				setMicState("idle");
+				getServerInfo();
+			}
+        </script>
+    </body>
+</html>

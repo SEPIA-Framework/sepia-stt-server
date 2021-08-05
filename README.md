@@ -1,113 +1,92 @@
 # SEPIA Speech-To-Text Server
+
+SEPIA Speech-To-Text (STT) Server is a WebSocket based, full-duplex Python server for realtime automatic speech recognition (ASR) supporting multiple open-source ASR engines.
+It can receive a stream of audio chunks via the secure WebSocket connection and return transcribed text almost immediately as partial and final results.  
   
-[BETA - UNDER CONSTRUCTION]  
+One goal of this project is to offer a **standardized, secure, realtime interface** for all the great open-source ASR tools out there.
+The server works on all major platforms including single-board devices like Raspberry Pi (4).  
   
-This server supports streaming audio over a WebSocket connection with integration of an open-source ASR decoder like the Kaldi speech recognition toolkit. It can handle full-duplex messaging during the decoding process for intermediate results. The REST interface of the server allows to switch the ASR model on-the-fly.
+NOTE: This is a complete **rewrite** (2021) of the original STT Server (2018). Code of the old version has been moved to the [LEGACY SERVER](legacy-server) folder.  
+If you are using custom models built for the 2018 version you can easily [convert them to new models](https://github.com/fquirin/kaldi-adapt-lm/blob/master/4a-build-vosk-model.sh) (please ask for details via the issues section).
+
+<p align="center">
+  <img src="screenshots/stt-recorder-demo.png" alt="SEPIA STT Recorder Demo"/>
+</p>
 
 ## Features
-* Websocket server (Python Tornado) that can receive (and send) audio streams
-* Compatible to [SEPIA Framework client](https://github.com/SEPIA-Framework/sepia-html-client-app)
-* Integration of [Zamia Speech](https://github.com/gooofy/zamia-speech) (python-kaldiasr) to use Kalid ASR in Python
-* Roughly based on [nexmo-community/audiosocket_framework](https://github.com/nexmo-community/audiosocket_framework)
 
-## Using the Docker image
+* WebSocket server (Python Fast-API) that can **receive audio streams and send transcribed text at the same time**
+* Modular architecture to **support multiple ASR engines** like Vosk (reference implementation), Coqui, Deepspeech, Scribosermo, ...
+* Optional **post processing** of result (e.g. via [text2num](https://github.com/allo-media/text2num) and custom modules)
+* **Standardized API for all engines** and support for individual engine features (speaker identification, grammar, confidence score, word timestamps, alternative results, etc.)
+* **On-the-fly server and engine configuration** via HTTP REST API and WebSocket 'welcome' event (including custom grammar, if supported by engine and model)
+* **User authentication** via simple common token or individual tokens for multiple users
+* Docker containers with **support for all major platform architectures**: x86 64Bit (amd64), ARM 32Bit (armv7l) and ARM 64Bit (aarch64)
+* Fast enough to **run even on Raspberry Pi 4 (2GB) in realtime** (depending on engine and model configuration)
+* Compatible to [SEPIA Framework client](https://github.com/SEPIA-Framework/sepia-html-client-app) (v0.24+)
 
-Make sure you have Docker installed then pull the image via the command-line:  
-```bash
-docker pull sepia/stt-server:beta2.1 
+## Integrated ASR Engines
+
+- [Vosk](https://github.com/alphacep/vosk-api) - Status: Ready. Includes tiny EN and DE models.
+- [Coqui](https://github.com/coqui-ai/STT) - Status: Planned.
+- [Scribosermo](https://gitlab.com/Jaco-Assistant/Scribosermo) - Status: Help wanted.
+- [TensorFlowASR](https://github.com/TensorSpeech/TensorFlowASR) - Status: Help wanted.
+- If you want to see additional engines please create a new [issue](https://github.com/SEPIA-Framework/sepia-stt-server/issues). Pull requests are welcome ;-)
+
+## Quick-Start
+
+The easiest way to get started is to use a Docker container for your platform:
+- x86 64Bit Systeme (Desktop PCs, Linux server etc.): `docker pull sepia/stt-server:v2_amd64_beta`
+- ARM 32Bit (Raspberry Pi 4 32Bit OS): `docker pull sepia/stt-server:v2_armv7l_beta`
+- ARM 64Bit (RPi 4 64Bit, Jetson Nano(?)): `docker pull sepia/stt-server:v2_aarch64_beta`
+
+After the download is complete simply start the container, for example via:  
 ```
-Once the image has finished downloading (~700MB, extracted ~2GB) you can run it using:  
-```bash
-docker run --rm --name=sepia_stt -d -p 9000:8080 sepia/stt-server:beta2.1 
+sudo docker run --name=sepia-stt -p 20741:20741 -it sepia/stt-server:[platform-tag]
 ```
-This will start the STT server (with internal proxy running on port 8080 with path '/stt') and expose it to port 9000 (choose whatever you need here).  
-To test if the server is working you can call the settings interface with:  
-```bash
-curl http://localhost:9000/stt/settings && echo
-```
-You should see a JSON response indicating the ASR model and server version.  
-To stop the server use:  
-```bash
-docker stop sepia_stt
-```
-To change the server settings, add your own ASR models, do language model customization or to capture your recordings for later you can use the internal 'share' folder like this:  
-```bash
-wget -O share-folder.zip https://github.com/SEPIA-Framework/sepia-stt-server/blob/master/share-folder.zip?raw=true
-unzip share-folder.zip -d /home/[my user]/sepia-stt-share/
-docker run --rm --name=sepia_stt -d -p 9000:8080 -v /home/[my user]/sepia-stt-share:/apps/share sepia/stt-server:beta2.1
-```
-where `/home/[my user]/sepia-stt-share` is just an example for any folder you would like to use (e.g. in Windows it could be C:/sepia/stt-share). 
-When setup like this the server will load it's configuration from the app.conf in your shared folder.
+
+To test the server visit: `http://localhost:20741` if you are on the same machine or `http://[server-IP]:20741` if you are in the same network (NOTE: custom recordings via microphone will only work using localhost or a HTTPS URL!).
+
+## Server Settings
+
+Most of the settings can be handled easily via the [server.conf settings file](src/server.conf). Please check out the file to see whats possible.
+
+ENV variables:
+- `SEPIA_STT_SETTINGS`: Overwrites default path to settings file
+
+Commandline options:
+- Use `python -m launch -h` to see all commandline options
+- Use `python -m launch -s [path-to-file]` to use custom settings
+
+NOTE: Commandline options always overrule the settings file but in most scenarios it makes sense to simply create a new settings file and use the `-s` flag.
+
+## ASR Engine Settings
+
+As soon as the server is running you can check the current setup via the HTTP REST interface: `http://localhost:20741//settings` or the test page (see quick-start above).  
   
-For SEPIA app/client settings see below.
+Individual settings for the active engine can be changed on-the-fly during the WebSocket 'welcome' event. See the [API docs](API.md) file for more info or check out the 'Engine Settings' section of the test page.
 
-## Custom installation (tested on Debian9 64bit)
+## How to use with SEPIA Client
 
-### Requirements
-Make sure you have at least Python 2.7 with pip (e.g.: sudo apt-get install python-pip) installed. You may also need header files for Python and OpenSSL depending on your operating system.
-If you are good to go install a few dependencies via pip:  
-```bash
-pip install tornado webrtcvad numpy
-```
-Then get the Python Kaldi bindings from [Zamia Speech](https://github.com/gooofy/zamia-speech) (Debian9 64bit example, see link for details):  
-```bash
-echo "deb http://goofy.zamia.org/repo-ai/debian/stretch/amd64/ ./" >/etc/apt/sources.list.d/zamia-ai.list
-wget -qO - http://goofy.zamia.org/repo-ai/debian/stretch/amd64/bofh.asc | sudo apt-key add -
-apt-get update
-apt-get install python-kaldiasr
-```
-Download one (or more) of their great ASR models too! I recommend 'kaldi-generic-en-tdnn_sp'.
-
-### Install STT server and run
-```bash
-git clone https://github.com/SEPIA-Framework/sepia-stt-server.git
-cd sepia-stt-server
-python sepia_stt_server.py
-```
-You can check if the server is reachable by calling `http://localhost:20741/ping`
-
-### Configuration
-The application reads its configuration on start-up from the app.conf file that can be located in several different locations (checked in this order):  
-* Home folder of the user: `~/share/sepia_stt_server/app.conf`  
-* App folder: `/apps/share/sepia_stt_server/app.conf`  
-* Base folder of the server app: `./app.conf`  
+The [SEPIA Client](https://github.com/SEPIA-Framework/sepia-html-client-app) will support the new STT server out-of-the-box from version 0.24.0 on. 
+Simply open the client's settings, look for 'ASR engine (STT)' and select `SEPIA`. The server address will be set automatically relative to your SEPIA Server host. 
+If your SEPIA server proxy has not been updated yet to forward requests to the SEPIA STT-Server you can enter the direct URL via the STT settings page, e.g.: `http://localhost:20741` or `http://localhost:20726/sepia/stt`.
+The settings will allow you to select a specific ASR model for each client language as well (if you don't want to use the language defaults set by your STT server config).  
   
-The most important settings are:  
-* port: Port of the server, default is 20741. You can use `ngrok http 20741` to tunnel to the SEPIA STT-Server for testing  
-* recordings_path: This is where the framework application will store audio files it records, default is "./recordings/"  
-* kaldi_model_path: This is where the ASR models for Kaldi are stored, default is "/opt/kaldi/model/kaldi-generic-en-tdnn_sp" as used by Zamia Speech  
+NOTE: Keep in mind that the client's microphone will [only work in a secure environment](https://github.com/SEPIA-Framework/sepia-docs/wiki/SSL-for-your-Server) (that is localhost or HTTPS) 
+and thus the link to your server must be secure as well (e.g. use a real domain and SSL certificate, self-signed SSL or a proxy running on localhost).
 
-## How to set-up the SEPIA client
-Open your client (or e.g. the [official public client](https://sepia-framework.github.io/app/index.html)), go to settings and look for 'ASR server' (page 2). If you are using the Docker image (see above) your entry should look something like this:
-* `ws://127.0.0.1:9000/stt/socket` (when running Docker on same machine and used the example command to start the image)
-* `wss://secure.example.com/stt/socket` (when using a secure server and proxy)
+## Develop your own client
 
-After you've set the correct server check the 'ASR engine' selector. If your browser supports the 'MediaDevices' interface you will be able to select 'Custom (WebSocket)' here.
+See the separate [API docs](API.md) file or check out the [Javascript client class](src/www/audio-modules/shared/sepia-stt-socket-client.js) and the [test page](src/www/test-page.html) source-code.  
   
-Some browsers might require a secure HTTPS connection. If you don't have your [own secure web-server](https://github.com/SEPIA-Framework/sepia-docs/wiki/SSL-for-your-Server) you can use tools like [Ngrok](https://ngrok.com/docs) for testing, e.g.:  
-```bash
-./ngrok http 9000
-```
-Choose the right port depending on your app.conf and your Docker run command (in case you are using the Docker image) and then set your 'ASR server' like this:  
-* `wss://[MY-NGROK-ADDRESS].nkrok.io/socket` (if you run the server directly) or  
-* `wss://[MY-NGROK-ADDRESS].nkrok.io/stt/socket` (if you're using the Docker image).  
-  
-Finally test the speech recognition in your client via the microphone button :-)
+Demo clients:
+- Server test page(s): `http://localhost:20741` (with microphone) or `http://[server-IP]:20741` (no microphone due to "insecure" origin)
+- [SEPIA Client app](https://sepia-framework.github.io/app/) (v0.24+, simply skip the login, go to settings and enter your server URL)
 
-## REST Interface
-The configuration can be changed while the server is running.  
-  
-Get the current configuration via HTTP GET to (custom server):  
-```
-curl -X GET http://localhost:20741/settings
-```
-Note: Replace localhost by your server or localhost:port with the web-server/proxy/Ngrok address. When you are using the Docker image your server is using a proxy! Add: '/stt/settings' to the path like in the client setup.  
-  
-Set a different Kaldi model via HTTP POST, e.g.:  
-```
-curl -X POST http://localhost:20741/settings \
-  -H 'Content-Type: application/json' \
-  -d '{"token":"test", "kaldi_model":"/home/user/share/kaldi_models/my-own-model"}'
-```
-(Note: token=test is a placeholder for future authentication process)  
+## Adapt ASR models
 
+Open-source ASR has improved a lot in the last years but sometimes it makes sense to adapt the models to your own, specific use-case and vocabulary to improve accuracy.
+The language model adaptation process will be integrated into the server in the near future. Until then please check out the following links:
+
+- Language model adaptation made easy with [kaldi-adapt-lm](https://github.com/fquirin/kaldi-adapt-lm)
