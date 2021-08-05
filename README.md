@@ -9,6 +9,10 @@ The server works on all major platforms including single-board devices like Rasp
 NOTE: This is a complete **rewrite** (2021) of the original STT Server (2018). Code of the old version has been moved to the [LEGACY SERVER](legacy-server) folder.  
 If you are using custom models built for the 2018 version you can easily [convert them to new models](https://github.com/fquirin/kaldi-adapt-lm/blob/master/4a-build-vosk-model.sh) (please ask for details via the issues section).
 
+<p align="center">
+  <img src="screenshots/stt-recorder-demo.png" alt="SEPIA STT Recorder Demo"/>
+</p>
+
 ## Features
 
 * WebSocket server (Python Fast-API) that can **receive audio streams and send transcribed text at the same time**
@@ -42,10 +46,6 @@ sudo docker run --name=sepia-stt -p 20741:20741 -it sepia/stt-server:[platform-t
 ```
 
 To test the server visit: `http://localhost:20741` if you are on the same machine or `http://[server-IP]:20741` if you are in the same network (NOTE: custom recordings via microphone will only work using localhost or a HTTPS URL!).
-
-<p align="center">
-  <img src="screenshots/stt-recorder-demo.png" alt="SEPIA STT Recorder Demo"/>
-</p>
 
 ## Server Settings
 
