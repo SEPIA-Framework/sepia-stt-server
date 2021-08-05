@@ -333,7 +333,7 @@
 				if (!suggestedSettings){
 					suggestedSettings = {};
 					//find the best language fit
-					let lang = "en-IE"; //navigator.language;
+					let lang = navigator.language;
 					let foundI;
 					if (lang && settings.languages && settings.models){
 						let li = settings.languages.indexOf(lang);
