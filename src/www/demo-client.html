@@ -49,7 +49,7 @@
 			<h1><button onclick="backToRoot()" style="margin: 0 16px 0 0; border-radius: 15px; font-size: 14px;">&#x2630;</button>SEPIA STT Server - Simple Client Demo</h1>
 			<p>This is a simple client demo using the <a href="https://github.com/SEPIA-Framework/sepia-web-audio" target=_blank>SEPIA Web Audio library</a> to connect to the SEPIA STT Server. Press the microphone button, start speaking and wait for the transcriptions to appear.</p>
 			<p>An advanced "demo" can be found here: <a href="https://sepia-framework.github.io/app/index.html" target=_blank>SEPIA Client</a> (simply skip the login and select your STT server via the settings). 
-			If you experience any problems please try <a href="test.html">test page 1</a> for more detailed information.</p>
+			If you experience any problems please try the <a href="test-page.html">test page</a> for more detailed information.</p>
 			<h2>Recorder</h2>
 			<div class="section">
 				<div class="group"><label>Start/Stop:</label><button id="micButton"></button></div>
@@ -310,6 +310,8 @@
 			};
 			var phrases = [];
 
+			var suggestedSettings;
+
 			function handleServerSettings(settings){
 				if (settings.version){
 					addMessage("INFO - Server version: " + settings.version);
@@ -327,6 +329,32 @@
 				}
 				if (settings.features){
 					addMessage("INFO - Available ASR features: " + JSON.stringify(settings.features, null, 2));
+				}
+				if (!suggestedSettings){
+					suggestedSettings = {};
+					//find the best language fit
+					let lang = "en-IE"; //navigator.language;
+					let foundI;
+					if (lang && settings.languages && settings.models){
+						let li = settings.languages.indexOf(lang);
+						if (li >= 0){
+							foundI = li;
+						}else{
+							let langShort = lang.substring(0, 2);
+							for (let i=0; i<settings.languages.length; i++){
+								if (settings.languages[i].indexOf(langShort) == 0){
+									foundI = i;
+									break;
+								}
+							}
+						}	
+					}
+					if (foundI){
+						asrOptions.language = settings.languages[foundI];
+						asrOptions.model = settings.models[foundI];
+					}
+					addMessage("INFO - Default language/model: " + asrOptions.language + "/" + asrOptions.model 
+						+ " - NOTE: If you set 'language' via settings make sure to remove 'model'!");
 				}
 			}
 
@@ -499,6 +527,7 @@
 				/* Vosk example:
 				{
 					"language": languageCode,
+					"model": modelName
 					"samplerate": 16000,
 					"alternatives": 0,
 					"continuous": false,

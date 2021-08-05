@@ -9,8 +9,8 @@ import uvicorn
 from settings import SettingsFile
 
 # Server constants
-SERVER_NAME = "SEPIA STT Server V2 BETA"
-SERVER_VERSION = "0.9.2"
+SERVER_NAME = "SEPIA STT Server"
+SERVER_VERSION = "0.9.5"
 
 # Run arguments
 argv=sys.argv[1:]

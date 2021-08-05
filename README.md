@@ -6,26 +6,27 @@ It can receive a stream of audio chunks via the secure WebSocket connection and 
 One goal of this project is to offer a **standardized, secure, realtime interface** for all the great open-source ASR tools out there.
 The server works on all major platforms including single-board devices like Raspberry Pi (4).  
   
-NOTE: This is **V2** of the STT Server, for V1 please see the [LEGACY SERVER](legacy-server) folder. 
-If you are using custom V1 models you can easily [convert them to V2 models](https://github.com/fquirin/kaldi-adapt-lm/blob/master/4a-build-vosk-model.sh) (please ask for details via the issues section).
+NOTE: This is a complete **rewrite** (2021) of the original STT Server (2018). Code of the old version has been moved to the [LEGACY SERVER](legacy-server) folder.  
+If you are using custom models built for the 2018 version you can easily [convert them to new models](https://github.com/fquirin/kaldi-adapt-lm/blob/master/4a-build-vosk-model.sh) (please ask for details via the issues section).
 
 ## Features
 
-* WebSocket server (Python Fast-API) that can receive audio streams and send transcribed text at the same time
-* Modular architecture to support multiple ASR engines like Vosk (reference implementation), Coqui, Deepspeech, Scribosermo, ...
-* Optional post processing of result (e.g. via [text2num](https://github.com/allo-media/text2num))
-* Standardized API for all engines and support for individual engine features (speaker identification, grammar, confidence score, word timestamps, alternative results, etc.)
-* On-the-fly server and engine configuration via HTTP REST API and WebSocket 'welcome' event (including custom grammar, if supported by engine and model)
-* User authentication via simple common token or individual tokens for multiple users
-* Docker containers with support for all major platform architectures: x86 64Bit (amd64), ARM 32Bit (armv7l) and ARM 64Bit (aarch64)
-* Fast enough to run even on Raspberry Pi 4 (2GB) in realtime (depending on engine and model configuration)
+* WebSocket server (Python Fast-API) that can **receive audio streams and send transcribed text at the same time**
+* Modular architecture to **support multiple ASR engines** like Vosk (reference implementation), Coqui, Deepspeech, Scribosermo, ...
+* Optional **post processing** of result (e.g. via [text2num](https://github.com/allo-media/text2num) and custom modules)
+* **Standardized API for all engines** and support for individual engine features (speaker identification, grammar, confidence score, word timestamps, alternative results, etc.)
+* **On-the-fly server and engine configuration** via HTTP REST API and WebSocket 'welcome' event (including custom grammar, if supported by engine and model)
+* **User authentication** via simple common token or individual tokens for multiple users
+* Docker containers with **support for all major platform architectures**: x86 64Bit (amd64), ARM 32Bit (armv7l) and ARM 64Bit (aarch64)
+* Fast enough to **run even on Raspberry Pi 4 (2GB) in realtime** (depending on engine and model configuration)
 * Compatible to [SEPIA Framework client](https://github.com/SEPIA-Framework/sepia-html-client-app) (v0.24+)
 
 ## Integrated ASR Engines
 
-- [Vosk](https://github.com/alphacep/vosk-api) - Status: Included (with tiny EN and DE model)
+- [Vosk](https://github.com/alphacep/vosk-api) - Status: Ready. Includes tiny EN and DE models.
 - [Coqui](https://github.com/coqui-ai/STT) - Status: Planned.
 - [Scribosermo](https://gitlab.com/Jaco-Assistant/Scribosermo) - Status: Help wanted.
+- [TensorFlowASR](https://github.com/TensorSpeech/TensorFlowASR) - Status: Help wanted.
 - If you want to see additional engines please create a new [issue](https://github.com/SEPIA-Framework/sepia-stt-server/issues). Pull requests are welcome ;-)
 
 ## Quick-Start
@@ -63,7 +64,7 @@ Individual settings for the active engine can be changed on-the-fly during the W
 
 ## How to use with SEPIA Client
 
-The [SEPIA Client](https://github.com/SEPIA-Framework/sepia-html-client-app) will support the new STT server (v2) out-of-the-box from version 0.24.0 on. 
+The [SEPIA Client](https://github.com/SEPIA-Framework/sepia-html-client-app) will support the new STT server out-of-the-box from version 0.24.0 on. 
 Simply open the client's settings, look for 'ASR engine (STT)' and select `SEPIA`. The server address will be set automatically relative to your SEPIA Server host. 
 If your SEPIA server proxy has not been updated yet to forward requests to the SEPIA STT-Server you can enter the direct URL via the STT settings page, e.g.: `http://localhost:20741` or `http://localhost:20726/sepia/stt`.
 The settings will allow you to select a specific ASR model for each client language as well (if you don't want to use the language defaults set by your STT server config).  

@@ -25,8 +25,8 @@ class VoskProcessor(EngineInterface):
         self._sample_rate = options.get("samplerate", float(16000))
         self._language = options.get("language")
         if self._language:
-            self._language = self._language.replace("-", "_")  # make sure we have xx_XX format
-            self.language_code_short = re.split("[_]", self._language)[0].lower()
+            self._language = self._language.replace("_", "-")  # make sure we have xx-XX format
+            self.language_code_short = re.split("[-]", self._language)[0].lower()
         else:
             self.language_code_short = None
         self._asr_model_path = options.get("model", None)

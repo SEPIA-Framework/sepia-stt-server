@@ -22,7 +22,11 @@ class HttpApiEndpoint:
         response = JSONResponse(content=data)
         return response
 
-    async def handle_settings_req_post(self, req: SettingsRequest, response: Response):
+    def handle_settings_req_post(self, req: SettingsRequest, response: Response):
         """Handle settings POST request"""
+        response = JSONResponse({"error": (
+            "Not implemented. "
+            "Please use WebSocket 'welcome' message for session settings instead."
+        )})
         response.status_code=status.HTTP_501_NOT_IMPLEMENTED
-        return ""
+        return response

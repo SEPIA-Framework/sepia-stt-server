@@ -114,7 +114,7 @@ class DateAndTimeOptimizer(TextProcessor):
         """Optimize time presentation for English"""
         opt_text = re.sub(r"(^|\W)(one (a\.m\.|am|p\.m\.|pm|o\Wclock))($|\W)",
             r"\g<1>1 \g<3>\g<4>", text_in, flags=re.IGNORECASE)
-        # TODO: alarm/timer/reminder for/to 8 30 
+        # TODO: alarm/timer/reminder for/to 8 30
         search_res = search_via_regex(opt_text,
             r"\d{1,2} \d{1,2}(?:\s|)(a\.m\.|am|p\.m\.|pm|o\Wclock)")
         if not search_res:
