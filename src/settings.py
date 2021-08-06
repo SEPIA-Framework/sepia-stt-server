@@ -13,14 +13,14 @@ SETTINGS_PATHS = [
 class SettingsFile:
     """File handler for server settings (e.g. server.conf)"""
     def __init__(self, file_path):
+        settings_paths = list(SETTINGS_PATHS)
         env_settings_path = os.getenv("SEPIA_STT_SETTINGS")
         if env_settings_path is not None:
             # add ENV settings path with high priority
-            settings_paths = SETTINGS_PATHS + [env_settings_path]
-        settings_paths = list(SETTINGS_PATHS)
+            settings_paths.append(env_settings_path)
         if file_path is not None:
-            settings_paths = SETTINGS_PATHS + [file_path]
-
+            # add file_path (launch argument) with highest priority
+            settings_paths.append(file_path)
         settings = configparser.ConfigParser()
         settings_read = settings.read(settings_paths)
         if not settings_read:
@@ -31,7 +31,7 @@ class SettingsFile:
             )
             sys.exit(1)
 
-        # We assume the last file always overwrites all settings
+        # The last "readable" file always overwrites all settings
         self.active_settings_file = settings_read[-1]
 
         # Validate config:
