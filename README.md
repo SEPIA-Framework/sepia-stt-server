@@ -68,7 +68,7 @@ Individual settings for the active engine can be changed on-the-fly during the W
 
 ## How to use with SEPIA Client
 
-The [SEPIA Client](https://github.com/SEPIA-Framework/sepia-html-client-app) will support the new STT server out-of-the-box from version 0.24.0 on. 
+The [SEPIA Client](https://github.com/SEPIA-Framework/sepia-html-client-app) will support the new STT server out-of-the-box from **version 0.24.0** on. 
 Simply open the client's settings, look for 'ASR engine (STT)' and select `SEPIA`. The server address will be set automatically relative to your SEPIA Server host. 
 If your SEPIA server proxy has not been updated yet to forward requests to the SEPIA STT-Server you can enter the direct URL via the STT settings page, e.g.: `http://localhost:20741` or `http://localhost:20726/sepia/stt`.
 The settings will allow you to select a specific ASR model for each client language as well (if you don't want to use the language defaults set by your STT server config).  
@@ -96,12 +96,12 @@ Language model adaptation via web GUI is planned for the near future. Until then
 Before you continue please read the basics about custom model creation on [kaldi-adapt-lm](https://github.com/fquirin/kaldi-adapt-lm) if you haven't already.
 You should at least understand what the 'lm_corpus' folder does and have a 'sentences_xy.txt' (xy: your code, e.g. 'en') ready in your language ;-).  
   
-If you use one of the newer Docker images (08.2021+) 'kaldi-adapt-lm' is already integrated and ready for action. You just need to adjust your Docker start command a bit:
+If you use one of the newer Docker images (August 2021) 'kaldi-adapt-lm' is already integrated and ready for action. You just need to adjust your Docker start command a bit:
 - Add a shared volume (example: '/home/pi/share') for new models, custom settings and to exchange corpus files: `-v /home/pi/share:/home/admin/sepia-stt/share`
 - Add ENV variable to use custom settings: `--env SEPIA_STT_SETTINGS=/home/admin/sepia-stt/share/my.conf`
 - Add `/bin/bash` at the end to enter the terminal and access 'kaldi-adapt-lm' instead of starting the STT server right away
 
-The result should look similar to this (depending on your folders and image tag):
+The result should look similar to this (depending on **your folders and image tag**):
 ```
 sudo docker run --rm --name=sepia-stt -p 20741:20741 -it \
 	-v /home/pi/share:/home/admin/sepia-stt/share \
@@ -110,12 +110,16 @@ sudo docker run --rm --name=sepia-stt -p 20741:20741 -it \
 	/bin/bash
 ```
 
+Don't start the container yet! First copy your own LM corpus aka 'sentences_xy.txt' to your shared folder on the host machine. In the example we use: '/home/pi/share/sentences_en.txt'. Do the same for 'my_dict_en.txt' if you need to add new words to the dictionary.  
+  
 When you are ready do the following:
-- Copy your own LM corpus aka 'sentences_xy.txt' to your shared folder on the host machine, e.g. to '/home/pi/share/sentences_en.txt'. Do the same for 'my_dict_en.txt' if you need to add new words to the dictionary.
 - Start your container with the updated command above. You should see the terminal of your container after a few seconds.
 - Copy your own sentences and optionally dictionary from the shared folder to 'kaldi-adapt-lm', e.g.: `cp /home/admin/sepia-stt/share/sentences_*.txt /home/admin/kaldi-adapt-lm/lm_corpus/` and `cp /home/admin/sepia-stt/share/my_dict_*.txt /home/admin/kaldi-adapt-lm/lm_dictionary/`.
-- Enter the model adapt folder via `cd /home/kaldi-adapt-lm` and finish steps 2-5 described in the [kaldi-adapt-lm](https://github.com/fquirin/kaldi-adapt-lm) README (step 1 is not required!).
-- If you survived all the steps (:-p) you should have a new `adapted_model.zip` available including your customized model.
+- Enter the model adapt folder via `cd /home/kaldi-adapt-lm` and run the adaptation process (more info: [kaldi-adapt-lm](https://github.com/fquirin/kaldi-adapt-lm)):
+	- The container has all requirements installed so we can directly download the base model, e.g.: `bash 2-download-model.sh en`.
+	- Next step is the actual adaptation process. We use the "safe" mode: `bash 3-adapt.sh en checkVocab optimizeLm`. If you don't get a note about missing vocabulary right away prepare to wait for a while ^^.
+	- After a few minutes (~15min for small LMs) you should see the success message. Continue with `bash 4a-build-vosk-model.sh` and finally `bash 5-clean-up.sh`.
+	- If you survived all the steps (:-p) you should have a new `adapted_model.zip` available containing your customized model.
 - Unzip the content to the shared folder and choose a proper name, e.g.: `unzip -d /home/admin/sepia-stt/share/my-model-v1-en/ adapted_model.zip`
 
 Finally we need to tell the server where to find the new model:
