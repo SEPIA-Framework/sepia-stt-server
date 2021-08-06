@@ -36,13 +36,13 @@ If you are using custom models built for the 2018 version you can easily [conver
 ## Quick-Start
 
 The easiest way to get started is to use a Docker container for your platform:
+- ARM 32Bit (Raspberry Pi 4 32Bit OS): `docker pull sepia/stt-server:vosk_armv7l`
+- ARM 64Bit (RPi 4 64Bit, Jetson Nano(?)): `docker pull sepia/stt-server:vosk_aarch64`
 - x86 64Bit Systeme (Desktop PCs, Linux server etc.): `docker pull sepia/stt-server:v2_amd64_beta`
-- ARM 32Bit (Raspberry Pi 4 32Bit OS): `docker pull sepia/stt-server:v2_armv7l_beta`
-- ARM 64Bit (RPi 4 64Bit, Jetson Nano(?)): `docker pull sepia/stt-server:v2_aarch64_beta`
 
 After the download is complete simply start the container, for example via:  
 ```
-sudo docker run --name=sepia-stt -p 20741:20741 -it sepia/stt-server:[platform-tag]
+sudo docker run --rm --name=sepia-stt -p 20741:20741 -it sepia/stt-server:[image-tag]
 ```
 
 To test the server visit: `http://localhost:20741` if you are on the same machine or `http://[server-IP]:20741` if you are in the same network (NOTE: custom recordings via microphone will only work using localhost or a HTTPS URL!).
@@ -76,7 +76,7 @@ The settings will allow you to select a specific ASR model for each client langu
 NOTE: Keep in mind that the client's microphone will [only work in a secure environment](https://github.com/SEPIA-Framework/sepia-docs/wiki/SSL-for-your-Server) (that is localhost or HTTPS) 
 and thus the link to your server must be secure as well (e.g. use a real domain and SSL certificate, self-signed SSL or a proxy running on localhost).
 
-## Develop your own client
+## Develop your own Client
 
 See the separate [API docs](API.md) file or check out the [Javascript client class](src/www/audio-modules/shared/sepia-stt-socket-client.js) and the [test page](src/www/test-page.html) source-code.  
   
@@ -84,9 +84,46 @@ Demo clients:
 - Server test page(s): `http://localhost:20741` (with microphone) or `http://[server-IP]:20741` (no microphone due to "insecure" origin)
 - [SEPIA Client app](https://sepia-framework.github.io/app/) (v0.24+, simply skip the login, go to settings and enter your server URL)
 
-## Adapt ASR models
+## Using Customized ASR Models
 
-Open-source ASR has improved a lot in the last years but sometimes it makes sense to adapt the models to your own, specific use-case and vocabulary to improve accuracy.
-The language model adaptation process will be integrated into the server in the near future. Until then please check out the following links:
+Open-source ASR has improved a lot in the last years but sometimes it makes sense to adapt the models to your own, specific use-case/domain and vocabulary to improve accuracy.
+Language model adaptation via web GUI is planned for the near future. Until then please check out the following link:
 
 - Language model adaptation made easy with [kaldi-adapt-lm](https://github.com/fquirin/kaldi-adapt-lm)
+
+### Adapt a model using the Docker image
+
+Before you continue please read the basics about custom model creation on [kaldi-adapt-lm](https://github.com/fquirin/kaldi-adapt-lm) if you haven't already.
+You should at least understand what the 'lm_corpus' folder does and have a 'sentences_xy.txt' (xy: your code, e.g. 'en') ready in your language ;-).  
+  
+If you use one of the newer Docker images (08.2021+) 'kaldi-adapt-lm' is already integrated and ready for action. You just need to adjust your Docker start command a bit:
+- Add a shared volume (example: '/home/pi/share') for new models, custom settings and to exchange corpus files: `-v /home/pi/share:/home/admin/sepia-stt/share`
+- Add ENV variable to use custom settings: `--env SEPIA_STT_SETTINGS=/home/admin/sepia-stt/share/my.conf`
+- Add `/bin/bash` at the end to enter the terminal and access 'kaldi-adapt-lm' instead of starting the STT server right away
+
+The result should look similar to this (depending on your folders and image tag):
+```
+sudo docker run --rm --name=sepia-stt -p 20741:20741 -it \
+	-v /home/pi/share:/home/admin/sepia-stt/share \
+	--env SEPIA_STT_SETTINGS=/home/admin/sepia-stt/share/my.conf \
+	sepia/stt-server:vosk_aarch64 \
+	/bin/bash
+```
+
+When you are ready do the following:
+- Copy your own LM corpus aka 'sentences_xy.txt' to your shared folder on the host machine, e.g. to '/home/pi/share/sentences_en.txt'. Do the same for 'my_dict_en.txt' if you need to add new words to the dictionary.
+- Start your container with the updated command above. You should see the terminal of your container after a few seconds.
+- Copy your own sentences and optionally dictionary from the shared folder to 'kaldi-adapt-lm', e.g.: `cp /home/admin/sepia-stt/share/sentences_*.txt /home/admin/kaldi-adapt-lm/lm_corpus/` and `cp /home/admin/sepia-stt/share/my_dict_*.txt /home/admin/kaldi-adapt-lm/lm_dictionary/`.
+- Enter the model adapt folder via `cd /home/kaldi-adapt-lm` and finish steps 2-5 described in the [kaldi-adapt-lm](https://github.com/fquirin/kaldi-adapt-lm) README (step 1 is not required!).
+- If you survived all the steps (:-p) you should have a new `adapted_model.zip` available including your customized model.
+- Unzip the content to the shared folder and choose a proper name, e.g.: `unzip -d /home/admin/sepia-stt/share/my-model-v1-en/ adapted_model.zip`
+
+Finally we need to tell the server where to find the new model:
+- Copy the original server settings file to the shared folder using the same name defined via 'SEPIA_STT_SETTINGS': `cp /home/admin/sepia-stt/server/server.conf /home/admin/sepia-stt/share/my.conf`.
+- Open the new settings in an editor, e.g.: `nano /home/admin/sepia-stt/share/my.conf` and add the fields `path3=../share/my-model-v1-en` and `lang3=en-US` in the `[app]` section (adjust path and language as required).
+- Save the changes and leave the editor (for nano: CTRL+C) then return to the home folder and take the server for a test drive: `cd /home/admin` and `bash on-docker.sh`.
+- Open the server test page in your browser (see quick-start) and check if your new model appears in log section.
+- If you're done testing close the server (CTRL+C) and leave the container terminal via `exit`.
+- Congratulations, you have created your own speech recognition model :-).
+
+To keep all your changes don't forget to start your Docker container with the `-v` and `--env` modifications from now on.
