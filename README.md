@@ -125,7 +125,7 @@ When you are ready do the following:
 Finally we need to tell the server where to find the new model:
 - Copy the original server settings file to the shared folder using the same name defined via 'SEPIA_STT_SETTINGS': `cp /home/admin/sepia-stt/server/server.conf /home/admin/sepia-stt/share/my.conf`.
 - Open the new settings in an editor, e.g.: `nano /home/admin/sepia-stt/share/my.conf` and add the fields `path3=../share/my-model-v1-en` and `lang3=en-US` in the `[app]` section (adjust path and language as required).
-- Save the changes and leave the editor (for nano: CTRL+C) then return to the home folder and take the server for a test drive: `cd /home/admin` and `bash on-docker.sh`.
+- Save the changes and leave the editor (for nano: CTRL+X) then return to the home folder and take the server for a test drive: `cd /home/admin` and `bash on-docker.sh`.
 - Open the server test page in your browser (see quick-start) and check if your new model appears in log section.
 - If you're done testing close the server (CTRL+C) and leave the container terminal via `exit`.
 - Congratulations, you have created your own speech recognition model :-).
