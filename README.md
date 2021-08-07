@@ -117,7 +117,7 @@ Don't start the container yet! First copy your own LM corpus (e.g.: sentences_en
 When you are ready do the following:
 - Start your container with the updated command above. You should see the terminal of your container after a few seconds.
 - Copy your own sentences and optionally dictionary from the shared folder to 'kaldi-adapt-lm', e.g.: `cp /home/admin/sepia-stt/share/sentences_*.txt /home/admin/kaldi-adapt-lm/lm_corpus/` and `cp /home/admin/sepia-stt/share/my_dict_*.txt /home/admin/kaldi-adapt-lm/lm_dictionary/`.
-- Enter the model adapt folder via `cd /home/kaldi-adapt-lm` and run the adaptation process (more info: [kaldi-adapt-lm](https://github.com/fquirin/kaldi-adapt-lm)):
+- Enter the model adapt folder via `cd /home/admin/kaldi-adapt-lm` and run the adaptation process (more info: [kaldi-adapt-lm](https://github.com/fquirin/kaldi-adapt-lm)):
 	- Requirements are already installed so we can directly download the base model for your language: `bash 2-download-model.sh [lang]`.
 	- Next step is the actual adaptation process. We use the "safe" mode: `bash 3-adapt.sh [lang] checkVocab optimizeLm`. If there is missing vocabulary in your LM you will get a note right away, if not prepare to wait for a while ^^.
 	- After a few minutes (~15min for small LMs) you should see the success message. Continue with `bash 4a-build-vosk-model.sh` and finally `bash 5-clean-up.sh`.

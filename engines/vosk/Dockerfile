@@ -9,18 +9,19 @@ RUN echo 'Installing dependencies...' && \
 #   Dependencies
     apt-get update && \
     apt-get install -y --no-install-recommends \
-     sudo git wget curl nano unzip zip procps \
-	 build-essential \
-     python3-pip python3-dev python3-setuptools python3-wheel \
-	 libffi-dev && \
+    sudo git wget curl nano unzip zip procps \
+    build-essential \
+    python3-pip python3-dev python3-setuptools python3-wheel \
+    #amd64 only? moved to adapt package: libatlas-base-dev && \
+    libffi-dev && \
 #
-#	Vosk and Fast-API
-	pip3 install cffi && \
-	pip3 install fastapi uvicorn[standard] aiofiles && \
+#   Vosk and Fast-API
+    pip3 install cffi && \
+    pip3 install fastapi uvicorn[standard] aiofiles && \
 #
 #   Clean up
-	apt-get remove -y build-essential && \
-	apt-get install libatomic1 && \
+    apt-get remove -y build-essential && \
+    apt-get install libatomic1 && \
     apt-get clean && apt-get autoclean && apt-get autoremove -y && \
 #
 #   Create user
