@@ -38,7 +38,7 @@ If you are using custom models built for the 2018 version you can easily [conver
 The easiest way to get started is to use a Docker container for your platform:
 - ARM 32Bit (Raspberry Pi 4 32Bit OS): `docker pull sepia/stt-server:vosk_armv7l`
 - ARM 64Bit (RPi 4 64Bit, Jetson Nano(?)): `docker pull sepia/stt-server:vosk_aarch64`
-- x86 64Bit Systeme (Desktop PCs, Linux server etc.): `docker pull sepia/stt-server:v2_amd64_beta`
+- x86 64Bit Systems (Desktop PCs, Linux server etc.): `docker pull sepia/stt-server:vosk_amd64`
 
 After the download is complete simply start the container, for example via:  
 ```
@@ -94,40 +94,42 @@ Language model adaptation via web GUI is planned for the near future. Until then
 ### Adapt a model using the Docker image
 
 Before you continue please read the basics about custom model creation on [kaldi-adapt-lm](https://github.com/fquirin/kaldi-adapt-lm) if you haven't already.
-You should at least understand what the 'lm_corpus' folder does and have a 'sentences_xy.txt' (xy: your code, e.g. 'en') ready in your language ;-).  
+You should at least understand what the 'lm_corpus' folder does and have a 'sentences_[lang].txt' ([lang] e.g.: en, de) ready in your language ;-).  
   
-If you use one of the newer Docker images (August 2021) 'kaldi-adapt-lm' is already integrated and ready for action. You just need to adjust your Docker start command a bit:
-- Add a shared volume (example: '/home/pi/share') for new models, custom settings and to exchange corpus files: `-v /home/pi/share:/home/admin/sepia-stt/share`
+If you use one of the newer Docker images (>=August 2021) 'kaldi-adapt-lm' is already integrated and ready for action. You just need to adjust your Docker start command a bit:
+- Add a shared volume for new models: `-v [host-models-folder]:/home/admin/sepia-stt/models/my` ([host-models-folder] e.g.: /home/pi/stt/models)
+- Add a shared volume for custom settings: `-v [host-share-folder]:/home/admin/sepia-stt/share` ([host-share-folder] e.g.: /home/pi/stt/share)
 - Add ENV variable to use custom settings: `--env SEPIA_STT_SETTINGS=/home/admin/sepia-stt/share/my.conf`
 - Add `/bin/bash` at the end to enter the terminal and access 'kaldi-adapt-lm' instead of starting the STT server right away
 
-The result should look similar to this (depending on **your folders and image tag**):
+The result should look like this:
 ```
 sudo docker run --rm --name=sepia-stt -p 20741:20741 -it \
-	-v /home/pi/share:/home/admin/sepia-stt/share \
+	-v [host-models-folder]:/home/admin/sepia-stt/models/my \
+	-v [host-share-folder]:/home/admin/sepia-stt/share \
 	--env SEPIA_STT_SETTINGS=/home/admin/sepia-stt/share/my.conf \
-	sepia/stt-server:vosk_aarch64 \
+	sepia/stt-server:[image-tag] \
 	/bin/bash
 ```
 
-Don't start the container yet! First copy your own LM corpus aka 'sentences_xy.txt' to your shared folder on the host machine. In the example we use: '/home/pi/share/sentences_en.txt'. Do the same for 'my_dict_en.txt' if you need to add new words to the dictionary.  
+Don't start the container yet! First copy your own LM corpus (e.g.: sentences_en.txt) and optionally LM dictionary (e.g.: my_dict_en.txt) to your shared folder on the host machine ([host-share-folder]).  
   
 When you are ready do the following:
 - Start your container with the updated command above. You should see the terminal of your container after a few seconds.
 - Copy your own sentences and optionally dictionary from the shared folder to 'kaldi-adapt-lm', e.g.: `cp /home/admin/sepia-stt/share/sentences_*.txt /home/admin/kaldi-adapt-lm/lm_corpus/` and `cp /home/admin/sepia-stt/share/my_dict_*.txt /home/admin/kaldi-adapt-lm/lm_dictionary/`.
 - Enter the model adapt folder via `cd /home/kaldi-adapt-lm` and run the adaptation process (more info: [kaldi-adapt-lm](https://github.com/fquirin/kaldi-adapt-lm)):
-	- The container has all requirements installed so we can directly download the base model, e.g.: `bash 2-download-model.sh en`.
-	- Next step is the actual adaptation process. We use the "safe" mode: `bash 3-adapt.sh en checkVocab optimizeLm`. If you don't get a note about missing vocabulary right away prepare to wait for a while ^^.
+	- Requirements are already installed so we can directly download the base model for your language: `bash 2-download-model.sh [lang]`.
+	- Next step is the actual adaptation process. We use the "safe" mode: `bash 3-adapt.sh [lang] checkVocab optimizeLm`. If there is missing vocabulary in your LM you will get a note right away, if not prepare to wait for a while ^^.
 	- After a few minutes (~15min for small LMs) you should see the success message. Continue with `bash 4a-build-vosk-model.sh` and finally `bash 5-clean-up.sh`.
-	- If you survived all the steps (:-p) you should have a new `adapted_model.zip` available containing your customized model.
-- Unzip the content to the shared folder and choose a proper name, e.g.: `unzip -d /home/admin/sepia-stt/share/my-model-v1-en/ adapted_model.zip`
+	- If you've survived all the steps (:-p) you should see a new `adapted_model.zip` containing your custom model.
+- Unzip the content to the shared folder and choose a proper name, e.g.: `unzip -d /home/admin/sepia-stt/models/my/custom-v1-en/ adapted_model.zip`
 
 Finally we need to tell the server where to find the new model:
 - Copy the original server settings file to the shared folder using the same name defined via 'SEPIA_STT_SETTINGS': `cp /home/admin/sepia-stt/server/server.conf /home/admin/sepia-stt/share/my.conf`.
-- Open the new settings in an editor, e.g.: `nano /home/admin/sepia-stt/share/my.conf` and add the fields `path3=../share/my-model-v1-en` and `lang3=en-US` in the `[app]` section (adjust path and language as required).
-- Save the changes and leave the editor (for nano: CTRL+X) then return to the home folder and take the server for a test drive: `cd /home/admin` and `bash on-docker.sh`.
-- Open the server test page in your browser (see quick-start) and check if your new model appears in log section.
+- Open the new settings in an editor, e.g.: `nano /home/admin/sepia-stt/share/my.conf` and add the fields `path3=my/custom-v1-en` and `lang3=en-US` in the `[app]` section (adjust path and language as required).
+- Save the changes and leave the editor (nano: CTRL+X) then return to the home folder and take the server for a test drive: `cd /home/admin` and `bash on-docker.sh`.
+- Open the server test page in your browser (see quick-start) and check if your new model appears in log section and/or model select field.
 - If you're done testing close the server (CTRL+C) and leave the container terminal via `exit`.
 - Congratulations, you have created your own speech recognition model :-).
 
-To keep all your changes don't forget to start your Docker container with the `-v` and `--env` modifications from now on.
+To use the new model in "production" don't forget to start your Docker container with the `-v` and `--env` modifications from now on (drop the '/bin/bash' if you just run the server).
