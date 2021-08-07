@@ -1,5 +1,5 @@
 #!/bin/bash
-# TODO: make version number variable
+# TODO: make version number variable - add '--no-cache' ?
 if [ -n "$(uname -m | grep aarch64)" ]; then
 	echo "Building Vosk Docker container for aarch64"
 	sudo docker build -t sepia/stt-server:vosk_aarch64 .

@@ -36,13 +36,13 @@ If you are using custom models built for the 2018 version you can easily [conver
 ## Quick-Start
 
 The easiest way to get started is to use a Docker container for your platform:
-- x86 64Bit Systeme (Desktop PCs, Linux server etc.): `docker pull sepia/stt-server:v2_amd64_beta`
-- ARM 32Bit (Raspberry Pi 4 32Bit OS): `docker pull sepia/stt-server:v2_armv7l_beta`
-- ARM 64Bit (RPi 4 64Bit, Jetson Nano(?)): `docker pull sepia/stt-server:v2_aarch64_beta`
+- ARM 32Bit (Raspberry Pi 4 32Bit OS): `docker pull sepia/stt-server:vosk_armv7l`
+- ARM 64Bit (RPi 4 64Bit, Jetson Nano(?)): `docker pull sepia/stt-server:vosk_aarch64`
+- x86 64Bit Systems (Desktop PCs, Linux server etc.): `docker pull sepia/stt-server:vosk_amd64`
 
 After the download is complete simply start the container, for example via:  
 ```
-sudo docker run --name=sepia-stt -p 20741:20741 -it sepia/stt-server:[platform-tag]
+sudo docker run --rm --name=sepia-stt -p 20741:20741 -it sepia/stt-server:[image-tag]
 ```
 
 To test the server visit: `http://localhost:20741` if you are on the same machine or `http://[server-IP]:20741` if you are in the same network (NOTE: custom recordings via microphone will only work using localhost or a HTTPS URL!).
@@ -68,7 +68,7 @@ Individual settings for the active engine can be changed on-the-fly during the W
 
 ## How to use with SEPIA Client
 
-The [SEPIA Client](https://github.com/SEPIA-Framework/sepia-html-client-app) will support the new STT server out-of-the-box from version 0.24.0 on. 
+The [SEPIA Client](https://github.com/SEPIA-Framework/sepia-html-client-app) will support the new STT server out-of-the-box from **version 0.24.0** on. 
 Simply open the client's settings, look for 'ASR engine (STT)' and select `SEPIA`. The server address will be set automatically relative to your SEPIA Server host. 
 If your SEPIA server proxy has not been updated yet to forward requests to the SEPIA STT-Server you can enter the direct URL via the STT settings page, e.g.: `http://localhost:20741` or `http://localhost:20726/sepia/stt`.
 The settings will allow you to select a specific ASR model for each client language as well (if you don't want to use the language defaults set by your STT server config).  
@@ -76,7 +76,7 @@ The settings will allow you to select a specific ASR model for each client langu
 NOTE: Keep in mind that the client's microphone will [only work in a secure environment](https://github.com/SEPIA-Framework/sepia-docs/wiki/SSL-for-your-Server) (that is localhost or HTTPS) 
 and thus the link to your server must be secure as well (e.g. use a real domain and SSL certificate, self-signed SSL or a proxy running on localhost).
 
-## Develop your own client
+## Develop your own Client
 
 See the separate [API docs](API.md) file or check out the [Javascript client class](src/www/audio-modules/shared/sepia-stt-socket-client.js) and the [test page](src/www/test-page.html) source-code.  
   
@@ -84,9 +84,52 @@ Demo clients:
 - Server test page(s): `http://localhost:20741` (with microphone) or `http://[server-IP]:20741` (no microphone due to "insecure" origin)
 - [SEPIA Client app](https://sepia-framework.github.io/app/) (v0.24+, simply skip the login, go to settings and enter your server URL)
 
-## Adapt ASR models
+## Using Customized ASR Models
 
-Open-source ASR has improved a lot in the last years but sometimes it makes sense to adapt the models to your own, specific use-case and vocabulary to improve accuracy.
-The language model adaptation process will be integrated into the server in the near future. Until then please check out the following links:
+Open-source ASR has improved a lot in the last years but sometimes it makes sense to adapt the models to your own, specific use-case/domain and vocabulary to improve accuracy.
+Language model adaptation via web GUI is planned for the near future. Until then please check out the following link:
 
 - Language model adaptation made easy with [kaldi-adapt-lm](https://github.com/fquirin/kaldi-adapt-lm)
+
+### Adapt a model using the Docker image
+
+Before you continue please read the basics about custom model creation on [kaldi-adapt-lm](https://github.com/fquirin/kaldi-adapt-lm) if you haven't already.
+You should at least understand what the 'lm_corpus' folder does and have a 'sentences_[lang].txt' ([lang] e.g.: en, de) ready in your language ;-).  
+  
+If you use one of the newer Docker images (>=August 2021) 'kaldi-adapt-lm' is already integrated and ready for action. You just need to adjust your Docker start command a bit:
+- Add a shared volume for new models: `-v [host-models-folder]:/home/admin/sepia-stt/models/my` ([host-models-folder] e.g.: /home/pi/stt/models)
+- Add a shared volume for custom settings: `-v [host-share-folder]:/home/admin/sepia-stt/share` ([host-share-folder] e.g.: /home/pi/stt/share)
+- Add ENV variable to use custom settings: `--env SEPIA_STT_SETTINGS=/home/admin/sepia-stt/share/my.conf`
+- Add `/bin/bash` at the end to enter the terminal and access 'kaldi-adapt-lm' instead of starting the STT server right away
+
+The result should look like this:
+```
+sudo docker run --rm --name=sepia-stt -p 20741:20741 -it \
+	-v [host-models-folder]:/home/admin/sepia-stt/models/my \
+	-v [host-share-folder]:/home/admin/sepia-stt/share \
+	--env SEPIA_STT_SETTINGS=/home/admin/sepia-stt/share/my.conf \
+	sepia/stt-server:[image-tag] \
+	/bin/bash
+```
+
+Don't start the container yet! First copy your own LM corpus (e.g.: sentences_en.txt) and optionally LM dictionary (e.g.: my_dict_en.txt) to your shared folder on the host machine ([host-share-folder]).  
+  
+When you are ready do the following:
+- Start your container with the updated command above. You should see the terminal of your container after a few seconds.
+- Copy your own sentences and optionally dictionary from the shared folder to 'kaldi-adapt-lm', e.g.: `cp /home/admin/sepia-stt/share/sentences_*.txt /home/admin/kaldi-adapt-lm/lm_corpus/` and `cp /home/admin/sepia-stt/share/my_dict_*.txt /home/admin/kaldi-adapt-lm/lm_dictionary/`.
+- Enter the model adapt folder via `cd /home/admin/kaldi-adapt-lm` and run the adaptation process (more info: [kaldi-adapt-lm](https://github.com/fquirin/kaldi-adapt-lm)):
+	- Requirements are already installed so we can directly download the base model for your language: `bash 2-download-model.sh [lang]`.
+	- Next step is the actual adaptation process. We use the "safe" mode: `bash 3-adapt.sh [lang] checkVocab optimizeLm`. If there is missing vocabulary in your LM you will get a note right away, if not prepare to wait for a while ^^.
+	- After a few minutes (~15min for small LMs) you should see the success message. Continue with `bash 4a-build-vosk-model.sh` and finally `bash 5-clean-up.sh`.
+	- If you've survived all the steps (:-p) you should see a new `adapted_model.zip` containing your custom model.
+- Unzip the content to the shared folder and choose a proper name, e.g.: `unzip -d /home/admin/sepia-stt/models/my/custom-v1-en/ adapted_model.zip`
+
+Finally we need to tell the server where to find the new model:
+- Copy the original server settings file to the shared folder using the same name defined via 'SEPIA_STT_SETTINGS': `cp /home/admin/sepia-stt/server/server.conf /home/admin/sepia-stt/share/my.conf`.
+- Open the new settings in an editor, e.g.: `nano /home/admin/sepia-stt/share/my.conf` and add the fields `path3=my/custom-v1-en` and `lang3=en-US` in the `[app]` section (adjust path and language as required).
+- Save the changes and leave the editor (nano: CTRL+X) then return to the home folder and take the server for a test drive: `cd /home/admin` and `bash on-docker.sh`.
+- Open the server test page in your browser (see quick-start) and check if your new model appears in log section and/or model select field.
+- If you're done testing close the server (CTRL+C) and leave the container terminal via `exit`.
+- Congratulations, you have created your own speech recognition model :-).
+
+To use the new model in "production" don't forget to start your Docker container with the `-v` and `--env` modifications from now on (drop the '/bin/bash' if you just run the server).
