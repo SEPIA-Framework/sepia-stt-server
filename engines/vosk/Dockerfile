@@ -12,7 +12,7 @@ RUN echo 'Installing dependencies...' && \
     sudo git wget curl nano unzip zip procps \
     build-essential \
     python3-pip python3-dev python3-setuptools python3-wheel \
-    #amd64 only? moved to adapt package: libatlas-base-dev && \
+    #amd64 only? moved to adapt package: libatlas-base-dev \
     libffi-dev && \
 #
 #   Vosk and Fast-API
