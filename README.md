@@ -49,24 +49,24 @@ After the download is complete simply start the container, for example via:
 sudo docker run --rm --name=sepia-stt -p 20741:20741 -it sepia/stt-server:[image-tag]
 ```
 
-To **add your own ASR models** create a shared volume for your container, place your model inside and update the server [config file](src/server.conf). The "adapt" section below has a more detailed example, but basically you can:
-- Add a volume to your container, e.g. use run flag: `-v [host-models-folder]:/home/admin/sepia-stt/models/my`
-- Copy your model folder (e.g. 'new-model-es') and the server [config file](src/server.conf) to your new folder
-- Add model path and language code to the "[asr_models]" section in your config, e.g.: `path3=my/new-model-es` and `lang3=es-ES`
-- Tell the server to use your new config via the flag: `--env SEPIA_STT_SETTINGS=/home/admin/sepia-stt/models/my/server.conf`
+### Test via web interface
+
+To test the server visit: `http://localhost:20741` if you are on the same machine or `http://[server-IP]:20741` if you are in the same network (NOTE: custom recordings via microphone will only work using localhost or a HTTPS URL!).
 
 ### Models
 
 Currently the server supports [Vosk ASR models](https://alphacephei.com/vosk/models) and custom models (see "adapt" section below).  
   
+To **add new ASR models** create a shared volume for your container, place your model inside and update the server [config file](src/server.conf). The "adapt" section below has a more detailed example, but basically you can:
+- Add a volume to your container, e.g. use run flag: `-v [host-models-folder]:/home/admin/sepia-stt/models/my`
+- Copy your model folder (e.g. 'new-model-es') and the server [config file](src/server.conf) to your new folder
+- Add model path and language code to the "[asr_models]" section in your config, e.g.: `path3=my/new-model-es` and `lang3=es-ES`
+- Tell the server to use your new config via the flag: `--env SEPIA_STT_SETTINGS=/home/admin/sepia-stt/models/my/server.conf`
+  
 Included inside the Docker containers are:
 - [vosk-model-small-en-us-0.15](https://github.com/SEPIA-Framework/sepia-stt-server/releases/download/v0.9.5/vosk-model-small-en-us-0.15.zip) - Lightweight wideband model for Android and RPi - Apache 2.0 license
 - [vosk-model-small-de-0.15](https://github.com/SEPIA-Framework/sepia-stt-server/releases/download/v0.9.5/vosk-model-small-de-0.15.zip) - Lightweight wideband model for Android and RPi - Apache 2.0 license
 - [vosk-model-spk-0.4](https://github.com/SEPIA-Framework/sepia-stt-server/releases/download/v0.9.5/vosk-model-spk-0.4.zip) - Model for speaker identification (all models) - Apache 2.0 license
-
-### Test via web interface
-
-To test the server visit: `http://localhost:20741` if you are on the same machine or `http://[server-IP]:20741` if you are in the same network (NOTE: custom recordings via microphone will only work using localhost or a HTTPS URL!).
 
 ## Server Settings
 
