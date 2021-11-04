@@ -33,13 +33,13 @@ If you are using custom models built for the 2018 version you can easily [conver
 - [TensorFlowASR](https://github.com/TensorSpeech/TensorFlowASR) - Status: Help wanted.
 - If you want to see additional engines please create a new [issue](https://github.com/SEPIA-Framework/sepia-stt-server/issues). Pull requests are welcome ;-)
 
-## Quick-Start
+## Quick-Start with Python
 
 The easiest way to get started is to use a Docker container for your platform. To install the server yourself please see the [code section README](src/README.md).
 
-### Docker
+## Quick-Start with Docker
 
-Choose your platform. The smallest English and German Vosk models are included:
+Choose your platform and pull the image. The smallest English and German Vosk models are already included:
 - ARM 32Bit (Raspberry Pi 4 32Bit OS): `docker pull sepia/stt-server:vosk_armv7l`
 - ARM 64Bit (RPi 4 64Bit, Jetson Nano(?)): `docker pull sepia/stt-server:vosk_aarch64`
 - x86 64Bit Systems (Desktop PCs, Linux server etc.): `docker pull sepia/stt-server:vosk_amd64`
