@@ -72,7 +72,9 @@ class WaveFileWriter(EngineInterface):
             WaveFileWriter.file_index = WaveFileWriter.file_index + 1
             if WaveFileWriter.file_index > 99:
                 WaveFileWriter.file_index = 1
-            self._file_name = f"{settings.recordings_path}{WaveFileWriter.file_index}-{int(time.time())}.wav"
+            self._file_name = (
+                f"{settings.recordings_path}{WaveFileWriter.file_index}-{int(time.time())}.wav"
+            )
             self._file = open(self._file_name, 'wb')
             logger.info("WaveFileWriter - Created file: %s", self._file_name)
         except OSError:
@@ -110,7 +112,7 @@ class WaveFileWriter(EngineInterface):
 #--- TEST ---
 
 class ThreadTestProcessor(EngineInterface):
-    """Thread test: 
+    """Thread test:
     https://bocadilloproject.github.io/guide/async.html#converting-a-regular-function-to-an-asynchronous-function
     """
     def __init__(self, send_message):
