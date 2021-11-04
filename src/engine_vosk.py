@@ -89,8 +89,12 @@ class VoskProcessor(EngineInterface):
         self._state = 0
         #
         # TODO: GPU support: check Vosk examples to find out how to enable GPU ... :-P
-        # from vosk import GpuInit, GpuInstantiate ...
-        # https://github.com/alphacep/vosk-api/tree/master/python/example
+        # Example code:
+        # from vosk import GpuInit, GpuInstantiate
+        # GpuInit()
+        # def thread_init():
+        #     GpuInstantiate()
+        # pool = concurrent.futures.ThreadPoolExecutor(initializer=thread_init)
 
     async def process(self, chunk: bytes):
         """Feed audio chunks to recognizer"""

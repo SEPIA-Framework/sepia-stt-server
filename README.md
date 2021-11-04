@@ -27,15 +27,19 @@ If you are using custom models built for the 2018 version you can easily [conver
 
 ## Integrated ASR Engines
 
-- [Vosk](https://github.com/alphacep/vosk-api) - Status: Ready. Includes tiny EN and DE models.
+- [Vosk](https://github.com/alphacep/vosk-api) - Status: Ready (Note: non-CUDA build). Includes tiny EN and DE models.
 - [Coqui](https://github.com/coqui-ai/STT) - Status: Planned.
-- [Scribosermo](https://gitlab.com/Jaco-Assistant/Scribosermo) - Status: Help wanted.
+- [Scribosermo](https://gitlab.com/Jaco-Assistant/Scribosermo) - Status: [experimenting with setup](https://github.com/fquirin/scribosermo-stt-setup).
 - [TensorFlowASR](https://github.com/TensorSpeech/TensorFlowASR) - Status: Help wanted.
 - If you want to see additional engines please create a new [issue](https://github.com/SEPIA-Framework/sepia-stt-server/issues). Pull requests are welcome ;-)
 
-## Quick-Start
+## Quick-Start with Python
 
-The easiest way to get started is to use a Docker container for your platform:
+The easiest way to get started is to use a Docker container for your platform. To install the server yourself please see the [code section README](src/README.md).
+
+## Quick-Start with Docker
+
+Choose your platform and pull the image. The smallest English and German Vosk models are already included:
 - ARM 32Bit (Raspberry Pi 4 32Bit OS): `docker pull sepia/stt-server:vosk_armv7l`
 - ARM 64Bit (RPi 4 64Bit, Jetson Nano(?)): `docker pull sepia/stt-server:vosk_aarch64`
 - x86 64Bit Systems (Desktop PCs, Linux server etc.): `docker pull sepia/stt-server:vosk_amd64`
@@ -45,7 +49,24 @@ After the download is complete simply start the container, for example via:
 sudo docker run --rm --name=sepia-stt -p 20741:20741 -it sepia/stt-server:[image-tag]
 ```
 
+### Test via web interface
+
 To test the server visit: `http://localhost:20741` if you are on the same machine or `http://[server-IP]:20741` if you are in the same network (NOTE: custom recordings via microphone will only work using localhost or a HTTPS URL!).
+
+### Models
+
+Currently the server supports [Vosk ASR models](https://alphacephei.com/vosk/models) and custom models (see "adapt" section below).  
+  
+To **add new ASR models** create a shared volume for your container, place your model inside and update the server [config file](src/server.conf). The "adapt" section below has a more detailed example, but basically you can:
+- Add a volume to your container, e.g. use run flag: `-v [host-models-folder]:/home/admin/sepia-stt/models/my` (Note: use absolute path!)
+- Copy your model folder (e.g. 'vosk-model-small-es') and the server [config file](src/server.conf) to your new folder
+- Add model path and language code to the "[asr_models]" section in your config, e.g.: `path3=vosk-model-small-es` and `lang3=es-ES`
+- Tell the server to use your new config via the flag: `--env SEPIA_STT_SETTINGS=/home/admin/sepia-stt/models/my/server.conf`
+  
+Included inside the Docker containers are:
+- [vosk-model-small-en-us-0.15](https://github.com/SEPIA-Framework/sepia-stt-server/releases/download/v0.9.5/vosk-model-small-en-us-0.15.zip) - Lightweight wideband model for Android and RPi - Apache 2.0 license
+- [vosk-model-small-de-0.15](https://github.com/SEPIA-Framework/sepia-stt-server/releases/download/v0.9.5/vosk-model-small-de-0.15.zip) - Lightweight wideband model for Android and RPi - Apache 2.0 license
+- [vosk-model-spk-0.4](https://github.com/SEPIA-Framework/sepia-stt-server/releases/download/v0.9.5/vosk-model-spk-0.4.zip) - Model for speaker identification (all models) - Apache 2.0 license
 
 ## Server Settings
 
