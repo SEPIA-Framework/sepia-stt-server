@@ -58,7 +58,7 @@ To test the server visit: `http://localhost:20741` if you are on the same machin
 Currently the server supports [Vosk ASR models](https://alphacephei.com/vosk/models) and custom models (see "adapt" section below).  
   
 To **add new ASR models** create a shared volume for your container, place your model inside and update the server [config file](src/server.conf). The "adapt" section below has a more detailed example, but basically you can:
-- Add a volume to your container, e.g. use run flag: `-v [host-models-folder]:/home/admin/sepia-stt/models/my`
+- Add a volume to your container, e.g. use run flag: `-v [host-models-folder]:/home/admin/sepia-stt/models/my` (Note: use absolut path!)
 - Copy your model folder (e.g. 'new-model-es') and the server [config file](src/server.conf) to your new folder
 - Add model path and language code to the "[asr_models]" section in your config, e.g.: `path3=my/new-model-es` and `lang3=es-ES`
 - Tell the server to use your new config via the flag: `--env SEPIA_STT_SETTINGS=/home/admin/sepia-stt/models/my/server.conf`
