@@ -60,7 +60,7 @@ Currently the server supports [Vosk ASR models](https://alphacephei.com/vosk/mod
 To **add new ASR models** create a shared volume for your container, place your model inside and update the server [config file](src/server.conf). The "adapt" section below has a more detailed example, but basically you can:
 - Add a volume to your container, e.g. use run flag: `-v [host-models-folder]:/home/admin/sepia-stt/models/my` (Note: use absolute path!)
 - Copy your model folder (e.g. 'vosk-model-small-es') and the server [config file](src/server.conf) to your new folder
-- Add model path and language code to the "[asr_models]" section in your config, e.g.: `path3=vosk-model-small-es` and `lang3=es-ES`
+- Add model path and language code to the "[asr_models]" section in your config, e.g.: `path3=my/vosk-model-small-es` and `lang3=es-ES`
 - Tell the server to use your new config via the flag: `--env SEPIA_STT_SETTINGS=/home/admin/sepia-stt/models/my/server.conf`
   
 Included inside the Docker containers are:
