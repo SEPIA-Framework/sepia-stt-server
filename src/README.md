@@ -2,15 +2,22 @@
 
 ### Requirements
 
-Python 3.7 is recommended.  
+Python 3.7 is recommended, 3.9 has been tested as well.  
 Please see 'requirements.txt' for more details or check out the **Dockerfile** inside the engines folder (`../engines/`).  
-Basic setup (the Vosk part might not work on all machines out-of-the-box):
+  
+Install recommended Linux packages (Debian 10|11 example):
+```
+sudo apt-get install -y python3-pip python3-dev python3-setuptools python3-wheel libffi-dev
+```
+
+Basic Pip setup (the Vosk part might not work on all machines out-of-the-box):
 
 ```
-pip install fastapi
-pip install uvicorn[standard]
-pip install aiofiles
-pip install vosk
+pip3 install cffi
+pip3 install fastapi
+pip3 install uvicorn[standard]
+pip3 install aiofiles
+pip3 install vosk
 ```
 
 ### Download the Server and ASR Models
@@ -51,4 +58,6 @@ To see all commandline options run `python -m launch --help`.
 
 ### Test
 
-Open: `http://localhost:20741/www/index.html`
+Open browser: `http://localhost:20741/www/index.html`  
+  
+Local test (Vosk): `python test_vosk.py [model-path] [test-WAV-path]`
