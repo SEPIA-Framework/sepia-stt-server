@@ -52,12 +52,24 @@ class VoskProcessor(EngineInterface):
                 self._language = settings.asr_model_languages[model_index]
             else:
                 self._language = ""
-        elif not self._language or self._language not in settings.asr_model_languages:
-            self._asr_model_path = settings.asr_model_paths[0]
-            self._language = settings.asr_model_languages[0]
-        else:
+        elif self._language and self._language in settings.asr_model_languages:
+            # Use language fit
             model_index = settings.asr_model_languages.index(self._language)
             self._asr_model_path = settings.asr_model_paths[model_index]
+        elif self._language and self.language_code_short:
+            # Take the first model that has the same basic language or 0
+            base_lang_fit = [l for l in settings.asr_model_languages if l.startswith(self.language_code_short)]
+            if base_lang_fit:
+                model_index = settings.asr_model_languages.index(base_lang_fit[0])
+            else:
+                model_index = 0
+            self._asr_model_path = settings.asr_model_paths[model_index]
+            self._language = settings.asr_model_languages[model_index]
+        else:
+            # If nothing fits take the first
+            model_index = 0
+            self._asr_model_path = settings.asr_model_paths[model_index]
+            self._language = settings.asr_model_languages[model_index]
         asr_model_path = settings.asr_models_folder + self._asr_model_path
         # Speaker model
         spk_model_path = settings.speaker_models_folder + settings.speaker_model_paths[0]
