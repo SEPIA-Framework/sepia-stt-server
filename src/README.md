@@ -60,4 +60,4 @@ To see all commandline options run `python -m launch --help`.
 
 Open browser: `http://localhost:20741/www/index.html`  
   
-Local test (Vosk): `python test_vosk.py [model-path] [test-WAV-path]`
+Local test (Vosk): `python test_vosk.py --model [model-path] --wav [test-WAV-path]`
