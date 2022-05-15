@@ -10,7 +10,7 @@ from settings import SettingsFile
 
 # Server constants
 SERVER_NAME = "SEPIA STT Server"
-SERVER_VERSION = "0.9.5"
+SERVER_VERSION = "0.10.0"
 
 # Run arguments
 argv=sys.argv[1:]
@@ -64,6 +64,10 @@ def get_settings_response():
         features.append("phrase_list")
         if settings.has_speaker_detection_model:
             features.append("speaker_detection")
+    # Coqui features
+    elif settings.asr_engine == "coqui":
+        features.append("partial_results")
+        features.append("alternatives")
     return {
         "version": SERVER_VERSION,
         "engine": settings.asr_engine,

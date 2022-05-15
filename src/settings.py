@@ -53,15 +53,33 @@ class SettingsFile:
                     self.user_tokens[last_user] = val
             # Engines
             self.recordings_path = settings.get("app", "recordings_path")
-            self.asr_engine = settings.get("app", "asr_engine")
-            self.asr_model_paths = []
-            self.asr_model_languages = []
+            self.asr_engine = settings.get("app", "asr_engine", fallback="dynamic")
+            self.asr_model_paths = []       # required: folder
+            self.asr_model_languages = []   # required: language code 'ab-CD'
+            self.asr_model_properties = []  # optional: engine, scorer, tasks, ...
             self.asr_models_folder = settings.get("asr_models", "base_folder")
+            # Load all model parameters for each model 1...N and filter by engine
+            model_index = 1
+            current_path = ""
+            current_lang = ""
+            current_params = {}
             for key, val in settings.items("asr_models"):
-                if key.startswith("path"):
-                    self.asr_model_paths.append(val)
-                elif key.startswith("lang"):
-                    self.asr_model_languages.append(val)
+                if model_index not in key:
+                    model_index += 1
+                    if self.asr_engine == "dynamic" or not current_params["engine"] or self.asr_engine == current_params["engine"]:
+                        self.asr_model_paths.append(current_path)
+                        self.asr_model_languages.append(current_lang)
+                        self.asr_model_properties.append(current_params)
+                    current_path = ""
+                    current_lang = ""
+                    current_params = {}
+                param = key.rsplit(model_index, 1)[0]
+                if key == "path":
+                    current_path = val
+                elif key == "lang":
+                    current_lang = val
+                else:
+                    current_params[param] = val
             self.speaker_model_paths = []
             self.speaker_models_folder = settings.get("speaker_models", "base_folder")
             for key, val in settings.items("speaker_models"):
