@@ -15,7 +15,7 @@ RUN echo 'Installing dependencies...' && \
     #amd64 only? moved to adapt package: libatlas-base-dev \
     libffi-dev && \
 #
-#   Vosk and Fast-API
+#   Fast-API
     pip3 install cffi && \
     pip3 install fastapi uvicorn[standard] aiofiles && \
 #

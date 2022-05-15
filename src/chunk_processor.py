@@ -7,7 +7,7 @@ from uvicorn.config import logger
 
 from launch import settings
 from socket_messages import (SocketJsonInputMessage, SocketResponseMessage, SocketErrorMessage)
-from engine_interface import EngineInterface
+from engine_interface import EngineInterface, EngineNotFound
 from engine_vosk import VoskProcessor
 
 class ChunkProcessor():
@@ -15,17 +15,22 @@ class ChunkProcessor():
     def __init__(self, processor_name: str = None, send_message = None, options = None):
         """Define processor via name"""
         self.send_message = send_message
+        # Default
         if processor_name is None:
             processor_name = settings.asr_engine
         # Vosk ASR
         if processor_name == "vosk":
             self.processor = VoskProcessor(send_message, options)
+        # TODO: add 'coqui' and 'dynamic'
         # Write to file
         elif processor_name == "wave_file_writer":
             self.processor = WaveFileWriter(send_message)
         # Test
         elif processor_name == "test":
             self.processor = ThreadTestProcessor(send_message)
+        # Unknown
+        else:
+            raise EngineNotFound("ASR engine unknown: '{}'".format(processor_name))
 
     async def process(self, chunk: bytes):
         """Process chunks with given processor"""

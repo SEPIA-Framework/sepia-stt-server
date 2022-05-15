@@ -26,7 +26,8 @@ class SocketJsonInputMessage(BaseModel):
     access_token: Optional[str] = None
     client_id: Optional[str] = None
     msg_id: int
-    #{"type": "welcome", "data": { "language": "en-US", "model": "...", "grammar": "..." }, "access_token": "", "client_id": "", "ts": 1620804751062, "msg_id": 1 }
+    # {"type": "welcome", "data": { "language": "en-US", "model": "...", "grammar": "..." },
+    #    "access_token": "", "client_id": "", "ts": 1620804751062, "msg_id": 1 }
 
 class SocketMessage():
     """Default socket message"""
