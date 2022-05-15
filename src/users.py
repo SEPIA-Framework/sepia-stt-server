@@ -11,6 +11,7 @@ from launch import settings
 from socket_messages import (SocketJsonInputMessage,
     SocketMessage, SocketPingMessage, SocketErrorMessage)
 from chunk_processor import ChunkProcessor
+from engine_interface import ModelNotFound, EngineNotFound
 
 # For now we just use a simple static token.
 COMMON_TOKEN = settings.common_auth_token
@@ -47,6 +48,7 @@ class SocketUser:
         client_id = socket_message.client_id
         token = socket_message.access_token
         processor_options = socket_message.data
+        processor_name = None   # NOTE: currently we let the ChunkProcessor choose
         # Try one token for all
         if COMMON_TOKEN and token == COMMON_TOKEN:
             self.is_authenticated = True
@@ -59,12 +61,20 @@ class SocketUser:
         # Create processor
         if self.is_authenticated:
             try:
-                self.processor = ChunkProcessor(processor_name=None,
+                self.processor = ChunkProcessor(processor_name=processor_name,
                     send_message=self.send_message, options=processor_options)
+            except EngineNotFound:
+                logger.exception("ChunkProcessor - Engine not found")
+                await self.send_message(SocketErrorMessage(500,
+                    "ChunkProcessorError", "EngineNotFound: Failed to create processor."))
+            except ModelNotFound:
+                logger.exception("ChunkProcessor - ASR model not found")
+                await self.send_message(SocketErrorMessage(500,
+                    "ChunkProcessorError", "ModelNotFound: Failed to create processor."))
             except RuntimeError:
                 logger.exception("ChunkProcessor - Failed to create processor")
                 await self.send_message(SocketErrorMessage(500,
-                    "ChunkProcessorError", "Failed to create processor."))
+                    "ChunkProcessorError", "RuntimeError: Failed to create processor."))
         else:
             logger.warning("User %s failed to authenticate!", client_id)
             await asyncio.sleep(3)

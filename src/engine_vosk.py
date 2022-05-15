@@ -2,12 +2,11 @@
 
 import os
 import json
-import re
 
 from vosk import Model, SpkModel, KaldiRecognizer, SetLogLevel
 
 from launch import settings
-from engine_interface import EngineInterface
+from engine_interface import EngineInterface, ModelNotFound
 from text_processor import TextToNumberProcessor, DateAndTimeOptimizer
 
 # Vosk log level - -1: off, 0: normal, 1: more verbose
@@ -17,21 +16,8 @@ class VoskProcessor(EngineInterface):
     """Process chunks with Vosk"""
     def __init__(self, send_message, options: dict = None):
         """Create Vosk processor"""
-        super().__init__(send_message)
-        # Options
-        if not options:
-            options = {}
-        # Common options - See 'EngineInterface'
-        self._sample_rate = options.get("samplerate", float(16000))
-        self._language = options.get("language")
-        if self._language:
-            self._language = self._language.replace("_", "-")  # make sure we have xx-XX format
-            self.language_code_short = re.split("[-]", self._language)[0].lower()
-        else:
-            self.language_code_short = None
-        self._asr_model_path = options.get("model", None)
-        self._continuous_mode = options.get("continuous", False)
-        self._optimize_final_result = options.get("optimizeFinalResult", False)
+        # Get all common options and defaults
+        super().__init__(send_message, options)
         # Specific options
         self._alternatives = options.get("alternatives", int(1))
         self._return_words = options.get("words", False)
@@ -45,39 +31,12 @@ class VoskProcessor(EngineInterface):
         else:
             self._speaker_detection = False
         # Recognizer
-        if self._asr_model_path:
-            # Reset language because model has higher priority
-            if self._asr_model_path in settings.asr_model_paths:
-                model_index = settings.asr_model_paths.index(self._asr_model_path)
-                self._language = settings.asr_model_languages[model_index]
-            else:
-                self._language = ""
-        elif self._language and self._language in settings.asr_model_languages:
-            # Use language fit
-            model_index = settings.asr_model_languages.index(self._language)
-            self._asr_model_path = settings.asr_model_paths[model_index]
-        elif self._language and self.language_code_short:
-            # Take the first model that has the same basic language or 0
-            base_lang_fit = [l for l in settings.asr_model_languages if l.startswith(self.language_code_short)]
-            if base_lang_fit:
-                model_index = settings.asr_model_languages.index(base_lang_fit[0])
-            else:
-                model_index = 0
-            self._asr_model_path = settings.asr_model_paths[model_index]
-            self._language = settings.asr_model_languages[model_index]
-        else:
-            # If nothing fits take the first
-            model_index = 0
-            self._asr_model_path = settings.asr_model_paths[model_index]
-            self._language = settings.asr_model_languages[model_index]
         asr_model_path = settings.asr_models_folder + self._asr_model_path
         # Speaker model
         spk_model_path = settings.speaker_models_folder + settings.speaker_model_paths[0]
         # Make sure paths exist and load models
-        if self._asr_model_path not in settings.asr_model_paths:
-            raise RuntimeError("ASR model path is not defined in available paths")
         if not os.path.exists(asr_model_path):
-            raise RuntimeError("ASR model path seems to be wrong")
+            raise ModelNotFound("ASR model path seems to be wrong")
         if self._speaker_detection and not os.path.exists(spk_model_path):
             raise RuntimeError("Speaker model path seems to be wrong")
         self._model = Model(asr_model_path)
