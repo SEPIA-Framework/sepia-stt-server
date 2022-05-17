@@ -37,6 +37,7 @@ class SettingsFile:
         # Validate config:
         try:
             self.settings_tag = settings.get("info", "settings_tag")
+            print(f"-----Settings INIT: {self.settings_tag}") # TODO: why is this called 2nd time at import ???
             # Server
             self.host = settings.get("server", "host")
             self.port = int(settings.get("server", "port"))
@@ -58,28 +59,38 @@ class SettingsFile:
             self.asr_model_languages = []   # required: language code 'ab-CD'
             self.asr_model_properties = []  # optional: engine, scorer, tasks, ...
             self.asr_models_folder = settings.get("asr_models", "base_folder")
+            self.asr_model_names = []       # build from path + optional (task|scorer) to distinguish
             # Load all model parameters for each model 1...N and filter by engine
             model_index = 1
+            num_section_items = len(settings.items("asr_models"))
+            # TODO: add current_name as new option
             current_path = ""
             current_lang = ""
             current_params = {}
             for key, val in settings.items("asr_models"):
-                if model_index not in key:
+                num_section_items = num_section_items-1
+                if key == "base_folder":
+                    # this should have been in a different section ^^
+                    continue
+                # next index and current collect
+                if str(model_index) not in key:
                     model_index += 1
-                    if self.asr_engine == "dynamic" or not current_params["engine"] or self.asr_engine == current_params["engine"]:
-                        self.asr_model_paths.append(current_path)
-                        self.asr_model_languages.append(current_lang)
-                        self.asr_model_properties.append(current_params)
+                    self.collect_model(current_path, current_lang, current_params)
                     current_path = ""
                     current_lang = ""
                     current_params = {}
-                param = key.rsplit(model_index, 1)[0]
-                if key == "path":
+                # get current
+                if key == f"path{model_index}":
                     current_path = val
-                elif key == "lang":
+                elif key == f"lang{model_index}":
                     current_lang = val
-                else:
+                elif str(model_index) in key:
+                    param = key.rsplit(str(model_index), 1)[0]
                     current_params[param] = val
+                # collect final
+                if num_section_items == 0 or str(model_index) not in key:
+                    self.collect_model(current_path, current_lang, current_params)
+            # Speaker models
             self.speaker_model_paths = []
             self.speaker_models_folder = settings.get("speaker_models", "base_folder")
             for key, val in settings.items("speaker_models"):
@@ -94,3 +105,22 @@ class SettingsFile:
         except configparser.Error as err:
             print("Settings error:", err, file=sys.stderr)
             sys.exit(1)
+
+    def collect_model(self, current_path, current_lang, current_params: dict):
+        """Check if model fits to engine settings and add to collection"""
+        # add all models that have no engine parameter or one that fits
+        if (self.asr_engine == "dynamic" or "engine" not in current_params
+            or self.asr_engine == current_params["engine"]):
+            # add task or scorer to name if exists
+            if "task" in current_params:
+                self.asr_model_names.append("{}:{}".format(
+                    current_path, current_params["task"]))
+            elif "scorer" in current_path:
+                self.asr_model_names.append("{}:{}".format(
+                    current_path, os.path.splitext(current_params["scorer"])[0]))
+            else:
+                self.asr_model_names.append(current_path)
+            self.asr_model_paths.append(current_path)
+            self.asr_model_languages.append(current_lang)
+            self.asr_model_properties.append(current_params)
+            #print(f"ASR model added: {current_path}") # DEBUG

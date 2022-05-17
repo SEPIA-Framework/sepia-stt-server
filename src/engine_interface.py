@@ -31,42 +31,45 @@ class EngineInterface():
             self.language_code_short = re.split("[-]", self._language)[0].lower()
         else:
             self.language_code_short = None
+        # -- model name
+        self._asr_model_name = options.get("model", None)
         # -- model folder/file relative to: settings.asr_models_folder
-        self._asr_model_path = options.get("model", None)
+        self._asr_model_path = ""
+        # -- model parameters
+        self._asr_model_properties = []
         # -- send final result once after stop event
         self._continuous_mode = options.get("continuous", False)
         # -- use text processors to optimize final result
         self._optimize_final_result = options.get("optimizeFinalResult", False)
 
         # Validate model
-        if self._asr_model_path:
-            if self._asr_model_path in settings.asr_model_paths:
-                # Reset language because model has higher priority
-                model_index = settings.asr_model_paths.index(self._asr_model_path)
-                self._language = settings.asr_model_languages[model_index]
+        model_index = 0
+        if self._asr_model_name:
+            if self._asr_model_name in settings.asr_model_names:
+                # Reset language etc. because model has higher priority
+                model_index = settings.asr_model_names.index(self._asr_model_name)
             else:
                 # Given model not found
-                raise ModelNotFound(f"ASR model path unknown: '{self._asr_model_path}'")
+                raise ModelNotFound(f"ASR model name unknown: '{self._asr_model_name}'")
         elif self._language and self._language in settings.asr_model_languages:
             # Use first model that fits language
             model_index = settings.asr_model_languages.index(self._language)
-            self._asr_model_path = settings.asr_model_paths[model_index]
         elif self._language and self.language_code_short:
             # Take the first model that has the same basic language
             base_lang_fit = [l for l in settings.asr_model_languages
                 if l.startswith(self.language_code_short)]
             if base_lang_fit:
                 model_index = settings.asr_model_languages.index(base_lang_fit[0])
-                self._asr_model_path = settings.asr_model_paths[model_index]
-                self._language = settings.asr_model_languages[model_index]
             else:
                 # Model not found
                 raise ModelNotFound(f"No ASR model for language: {self.language_code_short}")
         else:
             # No given model or language -> Just take the first one available
             model_index = 0
-            self._asr_model_path = settings.asr_model_paths[model_index]
-            self._language = settings.asr_model_languages[model_index]
+        # adapt other parameters
+        self._language = settings.asr_model_languages[model_index]
+        self._asr_model_path = settings.asr_model_paths[model_index]
+        self._asr_model_properties = settings.asr_model_properties[model_index]
 
     async def process(self, chunk: bytes):
         """Process chunk"""

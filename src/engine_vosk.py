@@ -19,11 +19,15 @@ class VoskProcessor(EngineInterface):
         # Get all common options and defaults
         super().__init__(send_message, options)
         # Specific options
+        # -- typically shared options
+        # NOTE: difference between alternatives 0 and 1 is only the Vosk result format!
         self._alternatives = options.get("alternatives", int(1))
         self._return_words = options.get("words", False)
-        try_speaker_detection = options.get("speaker", False)
-        self._phrase_list = options.get("phrases")
+        # -- list of custom phrases to recognize
         # example: self._phrase_list = ["hallo", "kannst du mich hören", "[unk]"]
+        self._phrase_list = options.get("phrases")
+        # -- speaker detection
+        try_speaker_detection = options.get("speaker", False)
         # NOTE: speaker detection does not work in all configurations
         if try_speaker_detection:
             self._speaker_detection = (settings.has_speaker_detection_model
@@ -101,7 +105,7 @@ class VoskProcessor(EngineInterface):
         """Get Vosk options for active setup"""
         active_options = {
             "language": self._language,
-            "model": self._asr_model_path,
+            "model": self._asr_model_name,
             "samplerate": self._sample_rate,
             "optimizeFinalResult": self._optimize_final_result,
             "alternatives": self._alternatives,
@@ -189,21 +193,22 @@ class VoskProcessor(EngineInterface):
     # ---- Helper functions ----
 
     @staticmethod
-    def normalize_result_format(result: str, alternatives = 0, has_words = False):
+    def normalize_result_format(result: str, alternatives: int = 0, has_words = False):
         """Vosk has many different formats depending on settings
         Convert result into a fixed format so we can handle it better"""
         json_result = json.loads(result)
         words = None
         if alternatives > 0 and "alternatives" in json_result:
+            # When alternatives is set the result format is different!
             json_result = json_result.get("alternatives", [])
             # handle array
-            alternatives = None
+            alternatives_list = None
             if len(json_result) > 1:
-                alternatives = json_result[1:]
+                alternatives_list = json_result[1:]
             if has_words:
                 words = json_result[0].get("result")
             return VoskProcessor.build_normalized_result(json_result[0],
-                alternatives, words)
+                alternatives_list, words)
         else:
             # handle object
             if has_words:
@@ -212,7 +217,7 @@ class VoskProcessor(EngineInterface):
                 None, words)
 
     @staticmethod
-    def build_normalized_result(json_result, alternatives = None, words = None):
+    def build_normalized_result(json_result: dict, alternatives: list = None, words = None):
         """Build a result object that always looks the same"""
         # text or partial or empty:
         text = json_result.get("text", json_result.get("partial", json_result.get("final", "")))
@@ -224,7 +229,7 @@ class VoskProcessor(EngineInterface):
             "alternatives": alternatives
         }
         if words is not None:
-            result["words"] = words
+            result["words"] = words # NOTE: currently we only return words of first transcript
         if speaker_vec is not None:
             result["spk"] = speaker_vec
         return result

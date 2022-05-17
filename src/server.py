@@ -60,3 +60,5 @@ async def websocket_endpoint_alias(socket: WebSocket):
     await socket_endpoint.handle(socket)
 
 print(f"SEPIA STT Server - Server running at: {settings.host}:{settings.port}")
+print(f"SEPIA STT Server - Speech recognition engine: {settings.asr_engine}")
+print(f"SEPIA STT Server - Models defined for engine: {len(settings.asr_model_paths)}")
