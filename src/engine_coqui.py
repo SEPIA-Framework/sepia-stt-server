@@ -1,7 +1,6 @@
 """ASR engine module for Coqui: https://github.com/coqui-ai/STT"""
 
 import os
-import json
 
 import numpy as np
 from stt import Model
@@ -21,6 +20,7 @@ class CoquiProcessor(EngineInterface):
         self._asr_model_scorer = options.get("scorer", None)
         # -- typically shared options
         self._alternatives = options.get("alternatives", int(1))
+        self._alternatives = max(1, self._alternatives) # Coqui can't handle 0
         self._return_words = options.get("words", False)
         # -- increase probability of certain words
         self._hot_words = options.get("hot_words", [])
@@ -49,16 +49,9 @@ class CoquiProcessor(EngineInterface):
         self._state = 0
         # internal helpers
         self._silence_energy = 0    # Coqui does not emit final results after "silence", we do that
-        self._silence_threshold = 5 # If enery is >= threshold we start a new result
+        self._silence_threshold = 50 # If enery is >= threshold we start a new result
         #
         # TODO: GPU support ?
-
-    def get_partial_result(self, chunk: bytes):
-        """Get partial result of first transcript (ignore alternatives)"""
-        self._recognizer.feedAudioContent(chunk)
-        partial_transcript = self._recognizer.intermediateDecodeWithMetadata(
-            num_results=1).transcripts[0]
-        return "".join(token.text for token in partial_transcript.tokens)
 
     async def process(self, chunk: bytes):
         """Feed audio chunks to recognizer"""
@@ -67,8 +60,9 @@ class CoquiProcessor(EngineInterface):
         if self._state == 3:
             pass
         elif chunk and len(chunk) > 0:
+            print("feed") # DEBUG
             self._recognizer.feedAudioContent(np_chunk)
-            # Partial result and silence check
+            # Partial result
             result = self._recognizer.intermediateDecodeWithMetadata(num_results=1)
             if result:
                 self._state = 1
@@ -76,13 +70,15 @@ class CoquiProcessor(EngineInterface):
 
         if self._silence_energy >= self._silence_threshold:
             # Silence detected
-            result = self._recognizer.finishStreamWithMetadata(num_results=self._alternatives)
+            print("silence") # DEBUG
+            result = self._recognizer.finishStreamWithMetadata(self._alternatives)
             self._state = 2
             self._silence_energy = 0
             await self._handle_final_result(result)
-            # Create new recognizer and feed last chunk so we don't miss stuff
-            self._recognizer = self._model.createStream() # create a new one
-            self._recognizer.feedAudioContent(np_chunk)
+            if self._continuous_mode:
+                # Create new recognizer and feed last chunk so we don't miss stuff
+                self._recognizer = self._model.createStream() # create a new one
+                self._recognizer.feedAudioContent(np_chunk)
 
     async def finish_processing(self):
         """Wait for last process and end"""
@@ -99,7 +95,7 @@ class CoquiProcessor(EngineInterface):
         """Get Coqui options for active setup"""
         active_options = {
             "language": self._language,
-            "model": self._asr_model_path,
+            "model": self._asr_model_name,
             "scorer": self._asr_model_scorer,
             "samplerate": self._sample_rate,
             "optimizeFinalResult": self._optimize_final_result,
@@ -116,26 +112,26 @@ class CoquiProcessor(EngineInterface):
         return active_options
 
     async def _handle_partial_result(self, result):
-        """Handle a partial result"""
+        """Handle a partial result and check for silence"""
         partial_str = CoquiProcessor.transcript_to_string(result.transcripts[0])
         # Same as last time?
-        if partial_str == self._last_partial_str:
+        if self._last_partial_str and partial_str == self._last_partial_str:
             self._silence_energy += 1
         else:
             self._silence_energy = 0
             self._last_partial_str = partial_str
-            norm_result = CoquiProcessor.normalize_result_format(
-                result, self._alternatives, self._return_words)
+            norm_result = CoquiProcessor.normalize_and_build_result(
+                result, partial_str, self._alternatives, self._return_words)
             self._partial_result = norm_result
-            #print("PARTIAL: ", self._partial_result)
+            print("PARTIAL: ", self._partial_result)
             await self._send(self._partial_result, False)
 
     async def _handle_final_result(self, result, skip_send = False):
         """Handle a final result"""
         if result:
             #print("FINAL: ", result)
-            norm_result = CoquiProcessor.normalize_result_format(
-                result, self._alternatives, self._return_words)
+            norm_result = CoquiProcessor.normalize_and_build_result(
+                result, None, self._alternatives, self._return_words)
             if self._continuous_mode:
                 # In continous mode we send "intermediate" final results
                 self._final_result = norm_result
@@ -143,8 +139,9 @@ class CoquiProcessor(EngineInterface):
                     await self._send(self._final_result, True)
             else:
                 # In non-continous mode we remember one big result
-                self._final_result = CoquiProcessor.append_to_result(self._final_result, norm_result)
-            #print("FINAL (auto): ", self._final_result)
+                self._final_result = CoquiProcessor.append_to_result(
+                    self._final_result, norm_result)
+            print("FINAL (auto): ", self._final_result)
 
     async def _finish(self):
         """Tell recognizer to stop and handle last result"""
@@ -159,7 +156,7 @@ class CoquiProcessor(EngineInterface):
             pass
         else:
             # Request final
-            result = self._recognizer.finishStreamWithMetadata(num_results=self._alternatives)
+            result = self._recognizer.finishStreamWithMetadata(self._alternatives)
             await self._handle_final_result(result, skip_send=True)
             await self._send(self._final_result, True)
 
@@ -194,44 +191,41 @@ class CoquiProcessor(EngineInterface):
         return "".join(token.text for token in transcript.tokens)
 
     @staticmethod
-    def normalize_result_format(result: str, alternatives = 0, has_words = False):
-        """Coqui format adaptation"""
+    def normalize_and_build_result(result: dict, transcript0_str: str = None,
+        alternatives: int = 1, has_words: bool = False):
+        """Coqui format adaptation to build a result object that always looks the same"""
+        # Coqui result (with metadata):
+        # {
+        #   transcripts: [{
+        #     confidence: ...,
+        #     tokens: [{
+        #       text: "a"
+        #     },...]
+        #   },...]
+        # }
+        transcripts = result.transcripts
+        alternatives_list = None
         words = None
-        # TODO: fix for Coqui
-        if alternatives > 0 and "alternatives" in json_result:
-            json_result = json_result.get("alternatives", [])
+        if alternatives > 1 and len(transcripts) > 1:
             # handle array
-            alternatives = None
-            if len(json_result) > 1:
-                alternatives = json_result[1:]
-            if has_words:
-                words = json_result[0].get("result")
-            return CoquiProcessor.build_normalized_result(json_result[0],
-                alternatives, words)
-        else:
-            # handle object
-            if has_words:
-                words = json_result.get("result")
-            return CoquiProcessor.build_normalized_result(json_result,
-                None, words)
-
-    @staticmethod
-    def build_normalized_result(json_result, alternatives = None, words = None):
-        """Build a result object that always looks the same"""
-        # text or partial or empty:
-        text = json_result.get("text", json_result.get("partial", json_result.get("final", "")))
-        confidence = json_result.get("confidence", -1)
-        speaker_vec = json_result.get("spk")
-        result = {
-            "text": text,
-            "confidence": confidence,
-            "alternatives": alternatives
+            alternatives_list = transcripts[1:]
+            # TODO: convert alternatives
+        # handle object
+        if has_words:
+            # TODO: get transcript[0] words
+            words = []
+        json_result = {
+            "confidence": transcripts[0].confidence,
+            "alternatives": alternatives_list
         }
+        if transcript0_str is not None:
+            json_result["text"] = transcript0_str
+        else:
+            json_result["text"] = CoquiProcessor.transcript_to_string(transcripts[0])
         if words is not None:
-            result["words"] = words
-        if speaker_vec is not None:
-            result["spk"] = speaker_vec
-        return result
+            json_result["words"] = words # NOTE: currently we only return words of first transcript
+
+        return json_result
 
     @staticmethod
     def append_to_result(given_result, new_result):
