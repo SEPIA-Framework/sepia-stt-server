@@ -1,6 +1,7 @@
 """ASR engine module for Coqui: https://github.com/coqui-ai/STT"""
 
 import os
+from timeit import default_timer as timer
 
 import numpy as np
 from stt import Model
@@ -48,8 +49,8 @@ class CoquiProcessor(EngineInterface):
         # states - 0: waiting for input, 1: got partial result, 2: got final result, 3: closing
         self._state = 0
         # internal helpers
-        self._silence_energy = 0    # Coqui does not emit final results after "silence", we do that
-        self._silence_threshold = 50 # If enery is >= threshold we start a new result
+        self._silence_start = 0  # Coqui does not emit final results after "silence", we do that
+        self._silence_threshold_s = 1.5  # silence until partial becomes "intermediate" final result
         #
         # TODO: GPU support ?
 
@@ -60,7 +61,6 @@ class CoquiProcessor(EngineInterface):
         if self._state == 3:
             pass
         elif chunk and len(chunk) > 0:
-            print("feed") # DEBUG
             self._recognizer.feedAudioContent(np_chunk)
             # Partial result
             result = self._recognizer.intermediateDecodeWithMetadata(num_results=1)
@@ -68,17 +68,19 @@ class CoquiProcessor(EngineInterface):
                 self._state = 1
                 await self._handle_partial_result(result)
 
-        if self._silence_energy >= self._silence_threshold:
+        if self._silence_start > 0 and timer() - self._silence_start >= self._silence_threshold_s:
             # Silence detected
-            print("silence") # DEBUG
+            #print("silence") # DEBUG
             result = self._recognizer.finishStreamWithMetadata(self._alternatives)
             self._state = 2
-            self._silence_energy = 0
+            self._silence_start = 0
             await self._handle_final_result(result)
-            if self._continuous_mode:
-                # Create new recognizer and feed last chunk so we don't miss stuff
-                self._recognizer = self._model.createStream() # create a new one
-                self._recognizer.feedAudioContent(np_chunk)
+            # Reset
+            self._partial_result = {}
+            self._last_partial_str = ""
+            # Create new recognizer and feed last chunk so we don't miss stuff
+            self._recognizer = self._model.createStream() # create a new one
+            self._recognizer.feedAudioContent(np_chunk)
 
     async def finish_processing(self):
         """Wait for last process and end"""
@@ -116,14 +118,16 @@ class CoquiProcessor(EngineInterface):
         partial_str = CoquiProcessor.transcript_to_string(result.transcripts[0])
         # Same as last time?
         if self._last_partial_str and partial_str == self._last_partial_str:
-            self._silence_energy += 1
-        else:
-            self._silence_energy = 0
+            # we only track silence if partial_str is not currently empty
+            if self._silence_start == 0:
+                self._silence_start = timer()
+        elif partial_str:
+            self._silence_start = 0
             self._last_partial_str = partial_str
             norm_result = CoquiProcessor.normalize_and_build_result(
                 result, partial_str, self._alternatives, self._return_words)
             self._partial_result = norm_result
-            print("PARTIAL: ", self._partial_result)
+            #print("PARTIAL: ", self._partial_result)
             await self._send(self._partial_result, False)
 
     async def _handle_final_result(self, result, skip_send = False):
@@ -133,15 +137,15 @@ class CoquiProcessor(EngineInterface):
             norm_result = CoquiProcessor.normalize_and_build_result(
                 result, None, self._alternatives, self._return_words)
             if self._continuous_mode:
-                # In continous mode we send "intermediate" final results
+                # In continuous mode we send "intermediate" final results
                 self._final_result = norm_result
                 if not skip_send:
                     await self._send(self._final_result, True)
             else:
-                # In non-continous mode we remember one big result
+                # In non-continuous mode we remember one big result
                 self._final_result = CoquiProcessor.append_to_result(
                     self._final_result, norm_result)
-            print("FINAL (auto): ", self._final_result)
+            #print("FINAL (auto): ", self._final_result)
 
     async def _finish(self):
         """Tell recognizer to stop and handle last result"""
@@ -188,7 +192,7 @@ class CoquiProcessor(EngineInterface):
     @staticmethod
     def transcript_to_string(transcript):
         """Convert transcript to string"""
-        return "".join(token.text for token in transcript.tokens)
+        return "".join(token.text for token in transcript.tokens) #.strip()
 
     @staticmethod
     def normalize_and_build_result(result: dict, transcript0_str: str = None,

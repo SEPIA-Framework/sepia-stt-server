@@ -138,12 +138,12 @@ class VoskProcessor(EngineInterface):
             norm_result = VoskProcessor.normalize_result_format(
                 result, self._alternatives, self._return_words)
             if self._continuous_mode:
-                # In continous mode we send "intermediate" final results
+                # In continuous mode we send "intermediate" final results
                 self._final_result = norm_result
                 if not skip_send:
                     await self._send(self._final_result, True)
             else:
-                # In non-continous mode we remember one big result
+                # In non-continuous mode we remember one big result
                 self._final_result = VoskProcessor.append_to_result(self._final_result, norm_result)
             #print("FINAL (auto): ", self._final_result)
 
