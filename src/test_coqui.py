@@ -24,13 +24,15 @@ parser.add_argument("--hot_words", type=str, help="Hot-words and their boosts.")
 parser.add_argument("--extended", action="store_true",
     help="Output string from extended metadata",
 )
-parser.add_argument("--json", action="store_true",
-    help="Output json from metadata with timestamp of each word",
+parser.add_argument("--plain", action="store_true",
+    help="Output plain text for final resilt instead of JSON with timestamp of each word",
 )
 parser.add_argument("--alternatives", type=int, default=1,
     help="Number of alternative transcripts to include in JSON output",
 )
 args = parser.parse_args()
+# Coqui can't handle alternatives=0
+args.alternatives = max(1, args.alternatives)
 
 #----------------------------
 
@@ -124,20 +126,19 @@ stream_rec = rec.createStream()
 while True:
     data = np.frombuffer(wf.readframes(4000), dtype=np.int16)
     if len(data) == 0:
-        if args.json:
-            print(json.dumps(metadata_to_json(
-                stream_rec.finishStreamWithMetadata(num_results=args.alternatives)), indent=2))
-        else:
+        if args.plain:
             print(stream_rec.finishStream())
+        else:
+            print(json.dumps(metadata_to_json(
+                stream_rec.finishStreamWithMetadata(args.alternatives)), indent=2))
         break
     else:
         stream_rec.feedAudioContent(data)
-        if args.json:
-            partial = stream_rec.intermediateDecodeWithMetadata(num_results=1)
-            partial_str = transcript_to_string(partial.transcripts[0]).strip()
-            print(partial_str)
-        else:
+        if args.plain:
             print(stream_rec.intermediateDecode())
+        else:
+            partial = stream_rec.intermediateDecodeWithMetadata(num_results=1)
+            print(transcript_to_string(partial.transcripts[0]).strip())
 #stream_rec.freeStream()
 
 #static:

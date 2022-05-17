@@ -9,19 +9,26 @@ from launch import settings
 from socket_messages import (SocketJsonInputMessage, SocketResponseMessage, SocketErrorMessage)
 from engine_interface import EngineInterface, EngineNotFound
 from engine_vosk import VoskProcessor
+from engine_coqui import CoquiProcessor
 
 class ChunkProcessor():
     """Common class to handle byte chunks using different processors"""
     def __init__(self, processor_name: str = None, send_message = None, options = None):
         """Define processor via name"""
         self.send_message = send_message
+        # TODO: add 'dynamic' and handle if default!
         # Default
         if processor_name is None:
             processor_name = settings.asr_engine
         # Vosk ASR
         if processor_name == "vosk":
             self.processor = VoskProcessor(send_message, options)
-        # TODO: add 'coqui' and 'dynamic'
+        # Coqui-STT
+        elif processor_name == "coqui":
+            self.processor = CoquiProcessor(send_message, options)
+        # Dynamic selection at runtime
+        elif processor_name == "dynamic":
+            raise RuntimeError(f"ASR engine not supported yet: '{processor_name}'")
         # Write to file
         elif processor_name == "wave_file_writer":
             self.processor = WaveFileWriter(send_message)
@@ -30,7 +37,7 @@ class ChunkProcessor():
             self.processor = ThreadTestProcessor(send_message)
         # Unknown
         else:
-            raise EngineNotFound("ASR engine unknown: '{}'".format(processor_name))
+            raise EngineNotFound(f"ASR engine unknown: '{processor_name}'")
 
     async def process(self, chunk: bytes):
         """Process chunks with given processor"""

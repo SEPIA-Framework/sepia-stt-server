@@ -14,6 +14,12 @@ SetLogLevel(0)
 parser = argparse.ArgumentParser(description="Running Vosk test inference.")
 parser.add_argument("--wav", required=True, help="Path to WAV input file")
 parser.add_argument("--model", required=True, help="Path to the model")
+parser.add_argument("--alternatives", type=int, default=0,
+    help="Number of alternative transcripts to include in JSON output",
+)
+parser.add_argument("--words", action="store_true",
+    help="Show each word with timestamp",
+)
 args = parser.parse_args()
 
 model_path = args.model
@@ -33,7 +39,8 @@ print("Loading model and recognizer")
 model_load_start = timer()
 model = Model(model_path)
 rec = KaldiRecognizer(model, wf.getframerate())
-rec.SetWords(True)
+rec.SetWords(args.words)    # NOTE: only for 1 result ?
+rec.SetMaxAlternatives(args.alternatives)
 print("Loaded in {:.3}s.".format(timer() - model_load_start))
 
 print("Running inference.")
