@@ -81,7 +81,9 @@ class SettingsFile:
                     current_name = ""
                     current_params = {}
                 # get current
-                if key == f"path{model_index}":
+                if val is None or val == "":
+                    pass
+                elif key == f"path{model_index}":
                     current_path = val
                 elif key == f"lang{model_index}":
                     current_lang = val
