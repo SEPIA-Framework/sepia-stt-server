@@ -72,7 +72,7 @@ class SocketTranscriptMessage(SocketMessage):
         super().__init__("result")
         self.set_field("transcript", transcript)
         self.set_field("isFinal", is_final)
-        if confidence >= 0:
+        if confidence is not None:
             self.set_field("confidence", confidence)
         if features is not None:
             self.set_field("features", features)    # This can be engine-specific (speaker_id etc.)
