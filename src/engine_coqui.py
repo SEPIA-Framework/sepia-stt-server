@@ -1,6 +1,7 @@
 """ASR engine module for Coqui: https://github.com/coqui-ai/STT"""
 
 import os
+from pickle import FALSE
 from timeit import default_timer as timer
 
 import numpy as np
@@ -19,12 +20,14 @@ class CoquiProcessor(EngineInterface):
         # Specific options:
         # -- scorer (LM file) relative to: settings.asr_models_folder
         self._asr_model_scorer = options.get("scorer", None)
+        if not self._asr_model_scorer and "scorer" in self._asr_model_properties:
+            self._asr_model_scorer = self._asr_model_properties["scorer"]
         # -- typically shared options
         self._alternatives = options.get("alternatives", int(1))
         self._alternatives = max(1, self._alternatives) # Coqui can't handle 0
         self._return_words = options.get("words", False)
         # -- increase probability of certain words
-        self._hot_words = options.get("hot_words", [])
+        self._hot_words = options.get("hotWords", options.get("hot_words", []))
         # example: self._phrase_list = [{word: "timer", boost: 1.5}]
         # Recognizer
         asr_model_path = settings.asr_models_folder + self._asr_model_path
@@ -107,10 +110,10 @@ class CoquiProcessor(EngineInterface):
         }
         if self._hot_words and len(self._hot_words) > 0:
             # NOTE: this can be very large, for now we use a placeholder
-            active_options["hot_words"] = []
-            #active_options["hot_words"] = self._hot_words
+            active_options["hotWords"] = []
+            #active_options["hotWords"] = self._hotWords
         else:
-            active_options["hot_words"] = []
+            active_options["hotWords"] = []
         return active_options
 
     async def _handle_partial_result(self, result):
@@ -124,8 +127,9 @@ class CoquiProcessor(EngineInterface):
         elif partial_str:
             self._silence_start = 0
             self._last_partial_str = partial_str
+            # Note: we disable words and alternatives for partial results
             norm_result = CoquiProcessor.normalize_and_build_result(
-                result, partial_str, self._alternatives, self._return_words)
+                result, partial_str, alternatives = int(1), return_words = False)
             self._partial_result = norm_result
             #print("PARTIAL: ", self._partial_result)
             await self._send(self._partial_result, False)
@@ -195,8 +199,35 @@ class CoquiProcessor(EngineInterface):
         return "".join(token.text for token in transcript.tokens) #.strip()
 
     @staticmethod
+    def collect_words_list(transcript):
+        """Collect words from transcript as list of dicts"""
+        word = ""
+        word_list = []
+        word_start_time = 0
+        # Loop through each character
+        for i, token in enumerate(transcript.tokens):
+            # Append character to word if it's not a space
+            if token.text != " ":
+                if len(word) == 0:
+                    # Log the start time of the new word
+                    word_start_time = token.start_time
+                word = word + token.text
+            # Word boundary is either a space or the last character in the array
+            if token.text == " " or i == len(transcript.tokens) - 1:
+                word_duration = max(token.start_time - word_start_time, 0)
+                each_word = dict()
+                each_word["word"] = word
+                each_word["start"] = round(word_start_time, 4)
+                each_word["end"] = round(word_start_time + word_duration, 4)
+                word_list.append(each_word)
+                # Reset
+                word = ""
+                word_start_time = 0
+        return word_list
+
+    @staticmethod
     def normalize_and_build_result(result: dict, transcript0_str: str = None,
-        alternatives: int = 1, has_words: bool = False):
+        alternatives: int = 1, return_words: bool = False):
         """Coqui format adaptation to build a result object that always looks the same"""
         # Coqui result (with metadata):
         # {
@@ -215,9 +246,9 @@ class CoquiProcessor(EngineInterface):
             alternatives_list = transcripts[1:]
             # TODO: convert alternatives
         # handle object
-        if has_words:
-            # TODO: get transcript[0] words
-            words = []
+        if return_words:
+            # get transcript[0] words
+            words = CoquiProcessor.collect_words_list(transcripts[0])
         json_result = {
             "confidence": transcripts[0].confidence,
             "alternatives": alternatives_list

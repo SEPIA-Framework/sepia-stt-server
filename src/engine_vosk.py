@@ -125,8 +125,9 @@ class VoskProcessor(EngineInterface):
         """Handle a partial result"""
         if result and self._last_partial_str != result:
             self._last_partial_str = result
+            # Note: we disable words and alt. for partial results (not supported anyway)
             norm_result = VoskProcessor.normalize_result_format(
-                result, self._alternatives, self._return_words)
+                result, alternatives = int(1), return_words = False)
             self._partial_result = norm_result
             #print("PARTIAL: ", self._partial_result)
             await self._send(self._partial_result, False)
@@ -193,7 +194,7 @@ class VoskProcessor(EngineInterface):
     # ---- Helper functions ----
 
     @staticmethod
-    def normalize_result_format(result: str, alternatives: int = 0, has_words = False):
+    def normalize_result_format(result: str, alternatives: int = 0, return_words = False):
         """Vosk has many different formats depending on settings
         Convert result into a fixed format so we can handle it better"""
         json_result = json.loads(result)
@@ -205,13 +206,13 @@ class VoskProcessor(EngineInterface):
             alternatives_list = None
             if len(json_result) > 1:
                 alternatives_list = json_result[1:]
-            if has_words:
+            if return_words:
                 words = json_result[0].get("result")
             return VoskProcessor.build_normalized_result(json_result[0],
                 alternatives_list, words)
         else:
             # handle object
-            if has_words:
+            if return_words:
                 words = json_result.get("result")
             return VoskProcessor.build_normalized_result(json_result,
                 None, words)

@@ -68,6 +68,9 @@ def get_settings_response():
     elif settings.asr_engine == "coqui":
         features.append("partial_results")
         features.append("alternatives")
+        features.append("external_scorer")
+        features.append("words_ts")
+        features.append("hot_words")
     # TODO: what about 'dynmaic' ?
     return {
         "version": SERVER_VERSION,
@@ -75,7 +78,6 @@ def get_settings_response():
         "models": settings.asr_model_names,
         "languages": settings.asr_model_languages,
         "features": features
-        # add more? (e.g. 'engines')
     }
 
 # Run if this is called as main
