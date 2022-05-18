@@ -1,7 +1,6 @@
 """ASR engine module for Coqui: https://github.com/coqui-ai/STT"""
 
 import os
-from pickle import FALSE
 from timeit import default_timer as timer
 
 import numpy as np
@@ -243,14 +242,22 @@ class CoquiProcessor(EngineInterface):
         words = None
         if alternatives > 1 and len(transcripts) > 1:
             # handle array
-            alternatives_list = transcripts[1:]
-            # TODO: convert alternatives
+            alternatives_list = []
+            for trans in transcripts[1:]:
+                item = {
+                    "confidence": trans.confidence,
+                    "text": CoquiProcessor.transcript_to_string(trans)
+                }
+                if return_words:
+                    # NOTE: we call this 'result' because thats what Vosk does
+                    item["result"] = CoquiProcessor.collect_words_list(trans)
+                alternatives_list.append(item)
         # handle object
         if return_words:
             # get transcript[0] words
             words = CoquiProcessor.collect_words_list(transcripts[0])
         json_result = {
-            "confidence": transcripts[0].confidence,
+            "confidence": transcripts[0].confidence, # TODO: usually negative
             "alternatives": alternatives_list
         }
         if transcript0_str is not None:
