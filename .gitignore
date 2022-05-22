@@ -140,3 +140,4 @@ cython_debug/
 # PROJECT
 recordings/
 models/
+src/server_test.conf

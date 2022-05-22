@@ -9,35 +9,40 @@ import configparser
 SERVER_NAME = "SEPIA STT Server"
 SERVER_VERSION = "0.10.0"
 
-# ordered from low prio to high prio
+# ordered from hight to low prio
 SETTINGS_PATHS = [
-    "./server.conf",
-    os.path.expanduser("~") + "/.sepia-stt-server.conf"
+    os.path.expanduser("~") + "/.sepia-stt-server.conf",
+    "./server.conf"
 ]
 
 class SettingsFile:
     """File handler for server settings (e.g. server.conf)"""
     def __init__(self, file_path = None):
-        settings_paths = list(SETTINGS_PATHS)
-        env_settings_path = os.getenv("SEPIA_STT_SETTINGS")
-        if env_settings_path is not None:
-            # add ENV settings path with high priority
-            settings_paths.append(env_settings_path)
-        if file_path is not None:
-            # add file_path (launch argument) with highest priority
-            settings_paths.append(file_path)
+        # Read ONE single "best" settings file
         settings = configparser.ConfigParser()
-        settings_read = settings.read(settings_paths)
+        env_settings_path = os.getenv("SEPIA_STT_SETTINGS")
+        path_checked = ""
+        if file_path is not None:
+            # Highest priority: commandline argument
+            path_checked = file_path
+            settings_read = settings.read(file_path)
+        elif env_settings_path is not None:
+            # 2nd highest priority: ENV
+            path_checked = env_settings_path
+            settings_read = settings.read(env_settings_path)
+        else:
+            # Check rest
+            path_checked = "".join('\n    {}'.format(sp) for sp in SETTINGS_PATHS)
+            for settings_file in SETTINGS_PATHS:
+                if os.path.exists(settings_file):
+                    settings_read = settings.read(settings_file)
+                    break
         if not settings_read:
-            print(
-                "No settings file found at the following locations: "
-                + "".join('\n    {}'.format(sp) for sp in settings_paths),
-                file=sys.stderr,
-            )
+            print("No settings file found at: " + path_checked, file=sys.stderr)
             sys.exit(1)
 
-        # The last "readable" file always overwrites all settings
-        self.active_settings_file = settings_read[-1]
+        # We only read ONE file so this is our active file
+        self.active_settings_file = settings_read[0]
 
         # Validate config:
         try:
@@ -78,7 +83,6 @@ class SettingsFile:
                     continue
                 # next index and current collect
                 base_key = re.split(r"\d+", key, 1)[0]
-                print(f"base_key: {base_key}")
                 if key != f"{base_key}{model_index}":
                     model_index += 1
                     self.collect_model(current_path, current_lang, current_name, current_params)
@@ -122,8 +126,6 @@ class SettingsFile:
         if (self.asr_engine == "dynamic" or self.asr_engine == "all"
             or "engine" not in params or self.asr_engine == params["engine"]):
             # build name for model from name/task/scorer/path
-            print(f"Model: {path}")
-            print(f"Model props.: {params}")
             if name:
                 self.asr_model_names.append(name)
             elif "task" in params:
