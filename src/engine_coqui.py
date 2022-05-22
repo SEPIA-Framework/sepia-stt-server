@@ -6,7 +6,7 @@ from timeit import default_timer as timer
 import numpy as np
 from stt import Model
 
-from launch import settings
+from launch_setup import settings
 from engine_interface import EngineInterface, ModelNotFound
 from text_processor import TextToNumberProcessor, DateAndTimeOptimizer
 

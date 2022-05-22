@@ -5,7 +5,7 @@ import json
 
 from vosk import Model, SpkModel, KaldiRecognizer, SetLogLevel
 
-from launch import settings
+from launch_setup import settings
 from engine_interface import EngineInterface, ModelNotFound
 from text_processor import TextToNumberProcessor, DateAndTimeOptimizer
 

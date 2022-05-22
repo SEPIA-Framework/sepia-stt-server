@@ -7,7 +7,7 @@ from uvicorn.config import logger
 from fastapi import WebSocket
 from starlette.websockets import WebSocketState
 
-from launch import settings
+from launch_setup import settings
 from socket_messages import (SocketJsonInputMessage,
     SocketMessage, SocketPingMessage, SocketErrorMessage)
 from chunk_processor import ChunkProcessor

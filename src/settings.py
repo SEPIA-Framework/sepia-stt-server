@@ -2,7 +2,12 @@
 
 import os
 import sys
+import re
 import configparser
+
+# Server constants
+SERVER_NAME = "SEPIA STT Server"
+SERVER_VERSION = "0.10.0"
 
 # ordered from low prio to high prio
 SETTINGS_PATHS = [
@@ -12,7 +17,7 @@ SETTINGS_PATHS = [
 
 class SettingsFile:
     """File handler for server settings (e.g. server.conf)"""
-    def __init__(self, file_path):
+    def __init__(self, file_path = None):
         settings_paths = list(SETTINGS_PATHS)
         env_settings_path = os.getenv("SEPIA_STT_SETTINGS")
         if env_settings_path is not None:
@@ -37,7 +42,6 @@ class SettingsFile:
         # Validate config:
         try:
             self.settings_tag = settings.get("info", "settings_tag")
-            print(f"-----Settings INIT: {self.settings_tag}") # TODO: why is this called 2nd time at import ???
             # Server
             self.host = settings.get("server", "host")
             self.port = int(settings.get("server", "port"))
@@ -73,7 +77,9 @@ class SettingsFile:
                     # this should have been in a different section ^^
                     continue
                 # next index and current collect
-                if str(model_index) not in key:
+                base_key = re.split(r"\d+", key, 1)[0]
+                print(f"base_key: {base_key}")
+                if key != f"{base_key}{model_index}":
                     model_index += 1
                     self.collect_model(current_path, current_lang, current_name, current_params)
                     current_path = ""
@@ -89,11 +95,10 @@ class SettingsFile:
                     current_lang = val
                 elif key == f"name{model_index}":
                     current_name = val
-                elif str(model_index) in key:
-                    param = key.rsplit(str(model_index), 1)[0]
-                    current_params[param] = val
+                elif key == f"{base_key}{model_index}":
+                    current_params[base_key] = val
                 # collect final
-                if num_section_items == 0 or str(model_index) not in key:
+                if num_section_items == 0:
                     self.collect_model(current_path, current_lang, current_name, current_params)
             # Speaker models
             self.speaker_model_paths = []
@@ -114,9 +119,11 @@ class SettingsFile:
     def collect_model(self, path, lang, name, params: dict):
         """Check if model fits to engine settings and add to collection"""
         # add all models that have no engine parameter or one that fits
-        if (self.asr_engine == "dynamic" or "engine" not in params
-            or self.asr_engine == params["engine"]):
+        if (self.asr_engine == "dynamic" or self.asr_engine == "all"
+            or "engine" not in params or self.asr_engine == params["engine"]):
             # build name for model from name/task/scorer/path
+            print(f"Model: {path}")
+            print(f"Model props.: {params}")
             if name:
                 self.asr_model_names.append(name)
             elif "task" in params:
@@ -131,3 +138,31 @@ class SettingsFile:
             self.asr_model_languages.append(lang)
             self.asr_model_properties.append(params)
             #print(f"ASR model added: {path}") # DEBUG
+
+    def get_settings_response(self):
+        """Get (partially hard-coded) settings options for server info message"""
+        features = []
+        # Vosk features - NOTE: not all of the models support them
+        if self.asr_engine == "vosk":
+            features.append("partial_results")
+            features.append("alternatives")
+            features.append("words_ts")
+            features.append("phrase_list")
+            if self.has_speaker_detection_model:
+                features.append("speaker_detection")
+        # Coqui features
+        elif self.asr_engine == "coqui":
+            features.append("partial_results")
+            features.append("alternatives")
+            features.append("external_scorer")
+            features.append("words_ts")
+            features.append("hot_words")
+        # TODO: what about 'dynmaic' ?
+        return {
+            "version": SERVER_VERSION,
+            "engine": self.asr_engine,
+            "languages": self.asr_model_languages,
+            "models": self.asr_model_names,
+            "modelProperties": self.asr_model_properties,
+            "features": features
+        }

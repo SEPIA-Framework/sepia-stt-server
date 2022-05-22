@@ -5,7 +5,7 @@ from functools import partial
 from starlette.concurrency import run_in_threadpool
 from uvicorn.config import logger
 
-from launch import settings
+from launch_setup import settings
 from socket_messages import (SocketJsonInputMessage, SocketResponseMessage, SocketErrorMessage)
 from engine_interface import EngineInterface, EngineNotFound
 from engine_vosk import VoskProcessor
@@ -27,7 +27,8 @@ class ChunkProcessor():
         elif processor_name == "coqui":
             self.processor = CoquiProcessor(send_message, options)
         # Dynamic selection at runtime
-        elif processor_name == "dynamic":
+        elif processor_name == "dynamic" or processor_name == "all":
+            # TODO: implement
             raise RuntimeError(f"ASR engine not supported yet: '{processor_name}'")
         # Write to file
         elif processor_name == "wave_file_writer":

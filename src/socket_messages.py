@@ -4,7 +4,7 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from launch import get_settings_response
+from launch_setup import settings
 
 class MessageIds:
     """Generate message IDs"""
@@ -61,7 +61,7 @@ class SocketWelcomeMessage(SocketMessage):
     """Welcome message (sent after authentication)"""
     def __init__(self, msg_id, processor_options = None):
         super().__init__("welcome", msg_id)
-        info = get_settings_response()
+        info = settings.get_settings_response()
         if processor_options:
             info["options"] = processor_options
         self.set_field("info", info)

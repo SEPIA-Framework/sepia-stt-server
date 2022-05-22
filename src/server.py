@@ -5,7 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
 
-from launch import settings, SERVER_NAME, SERVER_VERSION
+from settings import SERVER_NAME, SERVER_VERSION
+from launch_setup import settings
 from http_api import HttpApiEndpoint, SettingsRequest
 from socket_api import WebsocketApiEndpoint
 
@@ -38,7 +39,9 @@ async def get_online():
 @app.get("/ping")
 async def get_ping():
     """Endpoint to get some public server info"""
-    return {"result": "success", "server": SERVER_NAME, "version": SERVER_VERSION}
+    return {
+        "result": "success", "server": SERVER_NAME, "version": SERVER_VERSION
+    }
 
 @app.get("/settings")
 async def get_settings():

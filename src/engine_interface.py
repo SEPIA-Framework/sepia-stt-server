@@ -2,7 +2,7 @@
 
 import re
 
-from launch import settings
+from launch_setup import settings
 from socket_messages import SocketTranscriptMessage, SocketErrorMessage
 
 class EngineNotFound(Exception):

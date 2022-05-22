@@ -7,7 +7,6 @@ from pydantic import ValidationError
 from socket_messages import (SocketJsonInputMessage, SocketMessage,
     SocketWelcomeMessage, SocketBroadcastMessage, SocketErrorMessage)
 from users import SocketUser
-#from launch import settings
 
 class SocketManager:
     """Manages WebSocket sessions"""
