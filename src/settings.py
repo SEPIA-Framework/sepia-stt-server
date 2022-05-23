@@ -122,9 +122,13 @@ class SettingsFile:
 
     def collect_model(self, path, lang, name, params: dict):
         """Check if model fits to engine settings and add to collection"""
+        is_dynamic = self.asr_engine == "dynamic" or self.asr_engine == "all"
+        # if engine is not specific we require an 'engine' property
+        if is_dynamic and "engine" not in params:
+            # we need that info
+            pass
         # add all models that have no engine parameter or one that fits
-        if (self.asr_engine == "dynamic" or self.asr_engine == "all"
-            or "engine" not in params or self.asr_engine == params["engine"]):
+        elif ("engine" not in params or self.asr_engine == params["engine"]):
             # build name for model from name/task/scorer/path
             if name:
                 self.asr_model_names.append(name)
@@ -144,7 +148,7 @@ class SettingsFile:
     def get_settings_response(self):
         """Get (partially hard-coded) settings options for server info message"""
         features = []
-        # Vosk features - NOTE: not all of the models support them
+        # Vosk features
         if self.asr_engine == "vosk":
             features.append("partial_results")
             features.append("alternatives")
@@ -159,12 +163,21 @@ class SettingsFile:
             features.append("external_scorer")
             features.append("words_ts")
             features.append("hot_words")
-        # TODO: what about 'dynmaic' ?
+        # Dynamic features
+        elif self.asr_engine == "dynamic" or self.asr_engine == "all":
+            features.append("engine_hot_swap")
+            # individual engine features should be checked during welcome event
+        # Debugging
+        elif self.asr_engine == "wave_file_writer":
+            features.append("write_file")
+            features.append("debug")
+        elif self.asr_engine == "test":
+            features.append("debug")
         return {
             "version": SERVER_VERSION,
             "engine": self.asr_engine,
-            "languages": self.asr_model_languages,
             "models": self.asr_model_names,
+            "languages": self.asr_model_languages,
             "modelProperties": self.asr_model_properties,
             "features": features
         }
