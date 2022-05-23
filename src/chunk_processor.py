@@ -28,8 +28,7 @@ class ChunkProcessor():
             self.processor = CoquiProcessor(send_message, options)
         # Dynamic selection at runtime
         elif processor_name == "dynamic" or processor_name == "all":
-            # TODO: implement
-            raise RuntimeError(f"ASR engine not supported yet: '{processor_name}'")
+            self.processor = DynamicEngineSwap(send_message)
         # Write to file
         elif processor_name == "wave_file_writer":
             self.processor = WaveFileWriter(send_message)
@@ -69,6 +68,17 @@ class ChunkProcessor():
             return self.processor.get_options()
         else:
             return None
+
+#--- DYNAMIC ENGINE SWAPPING ---
+
+class DynamicEngineSwap(EngineInterface):
+    """Swap different engines during runtime. Requires 'engine' property in model settings."""
+
+    def __init__(self, send_message):
+        """Create dynamic engine class and load correct ASR engine"""
+        super().__init__(send_message)
+        # TODO: implement
+        raise RuntimeError("ASR engine not supported yet: dynmaic'")
 
 #--- FILE WRITER ---
 

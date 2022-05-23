@@ -66,7 +66,8 @@ class EngineInterface():
         else:
             # No given model or language -> Just take the first one available
             model_index = 0
-        # adapt other parameters
+        # apply index again to all parameters
+        self._asr_model_name = settings.asr_model_names[model_index]
         self._language = settings.asr_model_languages[model_index]
         self._asr_model_path = settings.asr_model_paths[model_index]
         self._asr_model_properties = settings.asr_model_properties[model_index]
