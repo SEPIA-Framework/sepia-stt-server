@@ -19,8 +19,8 @@ class EngineInterface():
         self.accept_chunks = True
         self.is_open = True
 
-        # Common options and defaults
-        if not options:
+        # Common options and defaults:
+        if options is None:
             options = {}
         # -- almost all engines work with 16khz mono
         self._sample_rate = options.get("samplerate", float(16000))

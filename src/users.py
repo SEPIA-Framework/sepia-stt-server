@@ -48,7 +48,7 @@ class SocketUser:
         client_id = socket_message.client_id
         token = socket_message.access_token
         processor_options = socket_message.data
-        processor_name = None   # NOTE: currently we let the ChunkProcessor choose
+        engine_name = None   # NOTE: we let the ChunkProcessor choose
         # Try one token for all
         if COMMON_TOKEN and token == COMMON_TOKEN:
             self.is_authenticated = True
@@ -61,7 +61,7 @@ class SocketUser:
         # Create processor
         if self.is_authenticated:
             try:
-                self.processor = ChunkProcessor(processor_name=processor_name,
+                self.processor = ChunkProcessor(engine_name=engine_name,
                     send_message=self.send_message, options=processor_options)
             except EngineNotFound:
                 logger.exception("ChunkProcessor - Engine not found")

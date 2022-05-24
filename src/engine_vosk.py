@@ -18,7 +18,9 @@ class VoskProcessor(EngineInterface):
         """Create Vosk processor"""
         # Get all common options and defaults
         super().__init__(send_message, options)
-        # Specific options
+        # Specific options:
+        if options is None:
+            options = {}
         # -- typically shared options
         # NOTE: difference between alternatives 0 and 1 is only the Vosk result format!
         self._alternatives = options.get("alternatives", int(1))

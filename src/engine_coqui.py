@@ -17,6 +17,8 @@ class CoquiProcessor(EngineInterface):
         # Get all common options and defaults
         super().__init__(send_message, options)
         # Specific options:
+        if options is None:
+            options = {}
         # -- scorer (LM file) relative to: settings.asr_models_folder
         self._asr_model_scorer = options.get("scorer", None)
         if not self._asr_model_scorer and "scorer" in self._asr_model_properties:

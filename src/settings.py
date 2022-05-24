@@ -15,6 +15,9 @@ SETTINGS_PATHS = [
     "./server.conf"
 ]
 
+class SettingsError(Exception):
+    """Exception for invalid settings or parser errors."""
+
 class SettingsFile:
     """File handler for server settings (e.g. server.conf)"""
     def __init__(self, file_path = None):
@@ -64,6 +67,8 @@ class SettingsFile:
             # Engines
             self.recordings_path = settings.get("app", "recordings_path")
             self.asr_engine = settings.get("app", "asr_engine", fallback="dynamic")
+            if self.asr_engine == "all":
+                self.asr_engine = "dynamic" # alias for 'dynamic'
             self.asr_model_paths = []       # required: folder
             self.asr_model_languages = []   # required: language code 'ab-CD'
             self.asr_model_properties = []  # optional: engine, scorer, tasks, ...
@@ -101,6 +106,9 @@ class SettingsFile:
                     current_name = val
                 elif key == f"{base_key}{model_index}":
                     current_params[base_key] = val
+                    # prevent recursion when loading chunk processor
+                    if base_key == "engine" and val == "dynamic":
+                        raise SettingsError("'engine=dynamic' is NOT ALLOWED as model property!")
                 # collect final
                 if num_section_items == 0:
                     self.collect_model(current_path, current_lang, current_name, current_params)
@@ -122,13 +130,13 @@ class SettingsFile:
 
     def collect_model(self, path, lang, name, params: dict):
         """Check if model fits to engine settings and add to collection"""
-        is_dynamic = self.asr_engine == "dynamic" or self.asr_engine == "all"
         # if engine is not specific we require an 'engine' property
-        if is_dynamic and "engine" not in params:
+        if self.asr_engine == "dynamic" and "engine" not in params:
             # we need that info
             pass
-        # add all models that have no engine parameter or one that fits
-        elif ("engine" not in params or self.asr_engine == params["engine"]):
+        # else we add all models that have no engine parameter or one that fits
+        elif (self.asr_engine == "dynamic" or
+            "engine" not in params or self.asr_engine == params["engine"]):
             # build name for model from name/task/scorer/path
             if name:
                 self.asr_model_names.append(name)
@@ -164,7 +172,7 @@ class SettingsFile:
             features.append("words_ts")
             features.append("hot_words")
         # Dynamic features
-        elif self.asr_engine == "dynamic" or self.asr_engine == "all":
+        elif self.asr_engine == "dynamic":
             features.append("engine_hot_swap")
             # individual engine features should be checked during welcome event
         # Debugging

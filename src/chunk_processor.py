@@ -11,33 +11,37 @@ from engine_interface import EngineInterface, EngineNotFound
 from engine_vosk import VoskProcessor
 from engine_coqui import CoquiProcessor
 
+def get_processor_instance(engine_name = None, send_message = None, options = None):
+    """Create a new processor instance for a certain engine"""
+    # Vosk ASR
+    if engine_name == "vosk":
+        return VoskProcessor(send_message, options)
+    # Coqui-STT
+    elif engine_name == "coqui":
+        return CoquiProcessor(send_message, options)
+    # Dynamic selection at runtime
+    elif engine_name == "dynamic":
+        return DynamicEngineSwap(send_message, options)
+    # Write to file
+    elif engine_name == "wave_file_writer":
+        return WaveFileWriter(send_message, options)
+    # Test
+    elif engine_name == "test":
+        return ThreadTestProcessor(send_message, options)
+    # Unknown
+    else:
+        raise EngineNotFound(f"ASR engine unknown: '{engine_name}'")
+
 class ChunkProcessor():
     """Common class to handle byte chunks using different processors"""
-    def __init__(self, processor_name: str = None, send_message = None, options = None):
+    def __init__(self, engine_name: str = None, send_message = None, options = None):
         """Define processor via name"""
         self.send_message = send_message
-        # TODO: add 'dynamic' and handle if default!
         # Default
-        if processor_name is None:
-            processor_name = settings.asr_engine
-        # Vosk ASR
-        if processor_name == "vosk":
-            self.processor = VoskProcessor(send_message, options)
-        # Coqui-STT
-        elif processor_name == "coqui":
-            self.processor = CoquiProcessor(send_message, options)
-        # Dynamic selection at runtime
-        elif processor_name == "dynamic" or processor_name == "all":
-            self.processor = DynamicEngineSwap(send_message)
-        # Write to file
-        elif processor_name == "wave_file_writer":
-            self.processor = WaveFileWriter(send_message)
-        # Test
-        elif processor_name == "test":
-            self.processor = ThreadTestProcessor(send_message)
-        # Unknown
-        else:
-            raise EngineNotFound(f"ASR engine unknown: '{processor_name}'")
+        if engine_name is None:
+            engine_name = settings.asr_engine
+        # Get instance
+        self.processor = get_processor_instance(engine_name, send_message, options)
 
     async def process(self, chunk: bytes):
         """Process chunks with given processor"""
@@ -72,25 +76,43 @@ class ChunkProcessor():
 #--- DYNAMIC ENGINE SWAPPING ---
 
 class DynamicEngineSwap(EngineInterface):
-    """Swap different engines during runtime. Requires 'engine' property in model settings."""
+    """Swap different engines during runtime. Requires 'engine' property in model settings"""
 
-    def __init__(self, send_message):
+    def __init__(self, send_message, options: dict = None):
         """Create dynamic engine class and load correct ASR engine"""
-        super().__init__(send_message)
-        # TODO: implement
-        raise RuntimeError("ASR engine not supported yet: dynmaic'")
+        super().__init__(send_message, options)
+        # get engine from selected model (guaranteed)
+        self._engine_name = self._asr_model_properties["engine"]
+        print(f"engine name: {self._engine_name}") # DEBUG
+        self._current_proc = get_processor_instance(self._engine_name, send_message, options)
+
+    async def process(self, chunk: bytes):
+        """Process with current engine for selected model"""
+        await self._current_proc.process(chunk)
+
+    async def finish_processing(self):
+        """Finish processing with current engine"""
+        await self._current_proc.finish_processing()
+
+    async def close(self):
+        """Close current processor"""
+        await self._current_proc.close()
+
+    def get_options(self):
+        """Get current processor options"""
+        return self._current_proc.get_options()
 
 #--- FILE WRITER ---
 
 class WaveFileWriter(EngineInterface):
-    """Write raw PCM audio chunks to wave file. This processor is usually only used for testing."""
+    """Write raw PCM audio chunks to wave file. This processor is usually only used for testing"""
 
     # Static file counter
     file_index = 0
 
-    def __init__(self, send_message):
+    def __init__(self, send_message, options: dict = None):
         """Create wave file writer"""
-        super().__init__(send_message)
+        super().__init__(send_message, options)
         try:
             WaveFileWriter.file_index = WaveFileWriter.file_index + 1
             if WaveFileWriter.file_index > 99:
@@ -122,6 +144,10 @@ class WaveFileWriter(EngineInterface):
         await self.on_before_close()
         self._close_file()
 
+    def get_options(self):
+        """Get processor options"""
+        return {}
+
     def _close_file(self):
         """Try to close file"""
         try:
@@ -138,9 +164,9 @@ class ThreadTestProcessor(EngineInterface):
     """Thread test:
     https://bocadilloproject.github.io/guide/async.html#converting-a-regular-function-to-an-asynchronous-function
     """
-    def __init__(self, send_message):
+    def __init__(self, send_message, options: dict = None):
         """Create test"""
-        super().__init__(send_message)
+        super().__init__(send_message, options)
         self.compute_async = partial(run_in_threadpool, self._compute)
         self._total_bytes = 0
         self._is_processing = False
@@ -169,6 +195,10 @@ class ThreadTestProcessor(EngineInterface):
     async def close(self):
         """Nothing?"""
         self.compute_async = None
+
+    def get_options(self):
+        """Get processor options"""
+        return {}
 
     async def _finish(self):
         """Send final message"""
