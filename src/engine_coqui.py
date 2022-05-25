@@ -20,16 +20,16 @@ class CoquiProcessor(EngineInterface):
         if options is None:
             options = {}
         # -- scorer (LM file) relative to: settings.asr_models_folder
-        self._asr_model_scorer = options.get("scorer", None)
+        self._asr_model_scorer = options.get("scorer", options.get("external_scorer", None))
         if not self._asr_model_scorer and "scorer" in self._asr_model_properties:
             self._asr_model_scorer = self._asr_model_properties["scorer"]
         # -- typically shared options
         self._alternatives = options.get("alternatives", int(1))
         self._alternatives = max(1, self._alternatives) # Coqui can't handle 0
-        self._return_words = options.get("words", False)
+        self._return_words = options.get("words", options.get("words_ts", False))
         # -- increase probability of certain words
-        self._hot_words = options.get("hotWords", options.get("hot_words", []))
-        # example: self._phrase_list = [{word: "timer", boost: 1.5}]
+        self._hot_words = options.get("hotWords", options.get("hot_words", None))
+        # example (word: boost): self._hot_words = [{"test": 1.5}]
         # Recognizer
         asr_model_path = settings.asr_models_folder + self._asr_model_path
         asr_model_file = (f"{asr_model_path}/model.tflite") # NOTE: currently we assume tflite
@@ -44,7 +44,10 @@ class CoquiProcessor(EngineInterface):
         if asr_scorer_file:
             self._model.enableExternalScorer(asr_scorer_file)
         # Use hot words?
-        # if self._phrase_list and len(self._phrase_list) > 0:
+        if self._hot_words and len(self._hot_words) > 0:
+            for word_boost in self._hot_words:
+                for word, boost in word_boost.items():
+                    self._model.addHotWord(word.strip(), float(boost))
         # create
         self._recognizer = self._model.createStream()
         self._partial_result = {}

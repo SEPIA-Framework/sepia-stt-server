@@ -24,10 +24,10 @@ class VoskProcessor(EngineInterface):
         # -- typically shared options
         # NOTE: difference between alternatives 0 and 1 is only the Vosk result format!
         self._alternatives = options.get("alternatives", int(1))
-        self._return_words = options.get("words", False)
+        self._return_words = options.get("words", options.get("words_ts", False))
         # -- list of custom phrases to recognize
         # example: self._phrase_list = ["hallo", "kannst du mich hören", "[unk]"]
-        self._phrase_list = options.get("phrases")
+        self._phrase_list = options.get("phrases", options.get("phrase_list", None))
         # -- speaker detection
         try_speaker_detection = options.get("speaker", False)
         # NOTE: speaker detection does not work in all configurations
