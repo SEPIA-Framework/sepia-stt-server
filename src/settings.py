@@ -69,6 +69,7 @@ class SettingsFile:
             self.asr_engine = settings.get("app", "asr_engine", fallback="dynamic")
             if self.asr_engine == "all":
                 self.asr_engine = "dynamic" # alias for 'dynamic'
+            self._available_engines = set({})   # keep track of all 'dynamic' engines in a set
             self.asr_model_paths = []       # required: folder
             self.asr_model_languages = []   # required: language code 'ab-CD'
             self.asr_model_properties = []  # optional: engine, scorer, tasks, ...
@@ -104,11 +105,15 @@ class SettingsFile:
                     current_lang = val
                 elif key == f"name{model_index}":
                     current_name = val
+                elif key == f"engine{model_index}":
+                    if val == "dynamic":
+                        # prevent recursion when loading chunk processor
+                        raise SettingsError("'engine=dynamic' is NOT ALLOWED as model property!")
+                    else:
+                        self._available_engines.add(val)
+                        current_params["engine"] = val
                 elif key == f"{base_key}{model_index}":
                     current_params[base_key] = val
-                    # prevent recursion when loading chunk processor
-                    if base_key == "engine" and val == "dynamic":
-                        raise SettingsError("'engine=dynamic' is NOT ALLOWED as model property!")
                 # collect final
                 if num_section_items == 0:
                     self.collect_model(current_path, current_lang, current_name, current_params)
@@ -153,39 +158,54 @@ class SettingsFile:
             self.asr_model_properties.append(params)
             #print(f"ASR model added: {path}") # DEBUG
 
+    def _get_vosk_features(self):
+        """Features available for Vosk engine"""
+        features = {"partial_results", "alternatives", "words_ts"}
+        features.add("phrase_list")
+        if self.has_speaker_detection_model:
+            features.add("speaker_detection")
+        # NOTE: typically used aliases: "words", "phrases", "speaker"
+        return features
+
+    def _get_coqui_features(self):
+        """Features available for Coqui engine"""
+        features = {"partial_results", "alternatives", "words_ts"}
+        features.add("hot_words")
+        features.add("external_scorer")
+        # NOTE: typically used aliases: "words", "hotWords", "scorer"
+        return features
+
     def get_settings_response(self):
         """Get (partially hard-coded) settings options for server info message"""
-        features = []
+        features = set({})
         # Vosk features
         if self.asr_engine == "vosk":
-            features.append("partial_results")
-            features.append("alternatives")
-            features.append("words_ts")
-            features.append("phrase_list")
-            if self.has_speaker_detection_model:
-                features.append("speaker_detection")
+            features.update(self._get_vosk_features())
         # Coqui features
         elif self.asr_engine == "coqui":
-            features.append("partial_results")
-            features.append("alternatives")
-            features.append("external_scorer")
-            features.append("words_ts")
-            features.append("hot_words")
+            features.update(self._get_coqui_features())
         # Dynamic features
         elif self.asr_engine == "dynamic":
-            features.append("engine_hot_swap")
-            # individual engine features should be checked during welcome event
+            # use dict instead
+            features = {
+                "basic": "engine_hot_swap"
+            }
+            if "vosk" in self._available_engines:
+                features["vosk"] = list(self._get_vosk_features())
+            if "coqui" in self._available_engines:
+                features["coqui"] = list(self._get_coqui_features())
+            # NOTE: individual engine features should be checked via welcome event
         # Debugging
         elif self.asr_engine == "wave_file_writer":
-            features.append("write_file")
-            features.append("debug")
+            features.add("write_file")
+            features.add("debug")
         elif self.asr_engine == "test":
-            features.append("debug")
+            features.add("debug")
         return {
             "version": SERVER_VERSION,
             "engine": self.asr_engine,
             "models": self.asr_model_names,
             "languages": self.asr_model_languages,
             "modelProperties": self.asr_model_properties,
-            "features": features
+            "features": list(features) if isinstance(features, set) else features
         }

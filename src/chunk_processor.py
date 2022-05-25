@@ -83,7 +83,6 @@ class DynamicEngineSwap(EngineInterface):
         super().__init__(send_message, options)
         # get engine from selected model (guaranteed)
         self._engine_name = self._asr_model_properties["engine"]
-        print(f"engine name: {self._engine_name}") # DEBUG
         self._current_proc = get_processor_instance(self._engine_name, send_message, options)
 
     async def process(self, chunk: bytes):
