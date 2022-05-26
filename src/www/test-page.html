@@ -259,41 +259,31 @@
 			var hotWords = [];
 
 			function handleServerSettings(settings){
-				if (settings.version){
-					addMessage("INFO - Server version: " + settings.version);
-				}
-				if (settings.engine){
-					asrEngine = settings.engine;
-					addMessage("INFO - Active engine: " + settings.engine);
-					document.getElementById("asrEngine").textContent = settings.engine;
-				}
-				if (settings.languages){
-					buildSelectOptions(languageSelector, settings.languages, "Automatic");
-					languageSelector.value = "";
-					languageCode = languageSelector.value;
-					addMessage("INFO - Available ASR languages: " + JSON.stringify(settings.languages, null, 2));
-				}
-				if (settings.models){
-					buildSelectOptions(modelSelector, settings.models, "Automatic");
-					modelSelector.value = "";
-					asrModel = modelSelector.value;
-					addMessage("INFO - Available ASR models: " + JSON.stringify(settings.models, null, 2));
-					if (settings.modelProperties){
-						addMessage("INFO - ASR model properties: " + JSON.stringify(settings.modelProperties, null, 2));
-						settings.models.forEach(function(m, i){
-							availableModelProperties[m] = settings.modelProperties[i];
-						});
-					}else{
-						availableModelProperties = {}
-					}
-				}
+				//start clean
 				activeOptions = {};
-				if (settings.features){
-					availableFeatures = settings.features;
-					document.getElementById("asrFeaturesBtn").title = JSON.stringify(availableFeatures, null, 1);
-				}else{
-					availableFeatures = [];
-				}
+				//version
+				addMessage("INFO - Server version: " + settings.version);
+				//engine
+				asrEngine = settings.engine;
+				addMessage("INFO - Active engine: " + settings.engine);
+				document.getElementById("asrEngine").textContent = settings.engine;
+				//languages
+				buildSelectOptions(languageSelector, settings.languages, "Automatic");
+				languageSelector.value = "";
+				languageCode = languageSelector.value;
+				addMessage("INFO - Available ASR languages: " + JSON.stringify(settings.languages, null, 2));
+				//models
+				buildSelectOptions(modelSelector, settings.models, "Automatic");
+				modelSelector.value = "";
+				asrModel = modelSelector.value;
+				addMessage("INFO - Available ASR models: " + JSON.stringify(settings.models, null, 2));
+				addMessage("INFO - ASR model properties: " + JSON.stringify(settings.modelProperties, null, 2));
+				settings.models.forEach(function(m, i){
+					availableModelProperties[m] = settings.modelProperties[i];
+				});
+				//features
+				availableFeatures = settings.features;
+				document.getElementById("asrFeaturesBtn").title = JSON.stringify(availableFeatures, null, 1);
 			}
 			function setLanguage(newLang, resetModel){
 				//NOTE: this assumes 'language' and 'model' are always available options!

@@ -62,9 +62,13 @@
 					<button id="asrOptionsBtn" class="round" onclick="showAsrOptionsModal()">Recognition</button>
 				</div>
 				<div class="group"><label>Source Info:</label><span id="recoderInfo" style="flex: 1 1 auto;">-updated during rec.-</span></div>
-				<div class="group" style="flex: 1 0 100%;">
+				<div id="phraseListBox" class="group" style="flex: 1 0 100%;">
 					<label>Phrases:</label><input id="phraseList" style="flex: 1 0 auto;" type="text" autocomplete="off" value="" 
 						placeholder="A list of phrases or words to recognize (if supported by model)"/>
+				</div>
+				<div id="hotWordsBox" class="group hidden" style="flex: 1 0 100%;">
+					<label>Hot words:</label><input id="hotWords" style="flex: 1 0 auto;" type="text" autocomplete="off" value="" 
+						placeholder="A list of 'word:boost' values (timer:5.0, ...) (supported by some models)"/>
 				</div>
 			</div>
 			<!--<h2>Engine Settings <button class="variant-2" onclick="getServerInfo()" style="margin: 0 0 0 16px;">RELOAD</button></h2>-->
@@ -118,6 +122,10 @@
 						if (phrases.length){
 							if (!opt.engineOptions) opt.engineOptions = {};
 							opt.engineOptions.phrases = phrases;
+						}
+						if (hotWords.length){
+							if (!opt.engineOptions) opt.engineOptions = {};
+							opt.engineOptions.hotWords = hotWords;
 						}
 						SepiaVoiceRecorder.create({
 							gain: +gainNode.value,
@@ -262,7 +270,7 @@
 				}
 			}
 			SepiaVoiceRecorder.onSpeechRecognitionEvent = function(data){
-				console.log("SepiaVoiceRecorder -  onSpeechRecognitionEvent", data);
+				console.log("SepiaVoiceRecorder - onSpeechRecognitionEvent", data);
 				if (data.type == "result"){
 					if (!isRecording && !isWaitingForFinalResult) return;	//TODO: ignore unplanned results - use?
 					if (data.isFinal){
@@ -278,6 +286,13 @@
 						addMessage("Speech Recognition - Event: result (partial) - " + data.transcript);
 						if (data.transcript) asrResultOutput.textContent = data.transcript;
 						isWaitingForFinalResult = true;
+					}
+				}else if (data.type == "error"){
+					if (data.name && data.message){
+						addMessage("Speech Recognition - " + data.name + ": " + data.message);
+					}else{
+						addMessage("Speech Recognition - Error - Check console for details plz.");
+						console.error("Speech Recognition Error:", data);
 					}
 				}else{
 					addMessage("Speech Recognition - Event: " + data.type);
@@ -309,26 +324,35 @@
 				engineOptions: {}
 			};
 			var phrases = [];
+			var hotWords = [];
+
+			var asrEngine = "";
+			var availableFeatures = {};
+			var availableLanguages = [];
+			var availableModels = {};
 
 			var suggestedSettings;
 
 			function handleServerSettings(settings){
-				if (settings.version){
-					addMessage("INFO - Server version: " + settings.version);
-				}
-				if (settings.engine){
-					addMessage("INFO - Active engine: " + settings.engine);
-				}
-				if (settings.languages){
-					addMessage("INFO - Available ASR languages: " + JSON.stringify(settings.languages, null, 2));
-					asrOptions.language = settings.languages[0];
-				}
-				if (settings.models){
-					addMessage("INFO - Available ASR models: " + JSON.stringify(settings.models, null, 2));
-					asrOptions.model = settings.models[0];
-				}
-				if (settings.features){
-					addMessage("INFO - Available ASR features: " + JSON.stringify(settings.features, null, 2));
+				addMessage("INFO - Server version: " + settings.version);
+				addMessage("INFO - Active engine: " + settings.engine);
+				asrEngine = settings.engine;
+				addMessage("INFO - Available ASR languages: " + JSON.stringify(settings.languages, null, 2));
+				asrOptions.language = settings.languages[0];
+				availableLanguages = settings.languages;
+				addMessage("INFO - Available ASR models: " + JSON.stringify(settings.models, null, 2));
+				asrOptions.model = settings.models[0];
+				addMessage("INFO - ASR model properties: " + JSON.stringify(settings.modelProperties, null, 2));
+				settings.models.forEach(function(m, i){
+					availableModels[m] = settings.modelProperties[i];
+					availableModels[m].language = settings.languages[i];
+					if (!availableModels[m].engine) availableModels[m].engine = asrEngine; //if it's not dynamic it has to be default
+				});
+				addMessage("INFO - Available ASR features: " + JSON.stringify(settings.features, null, 2));
+				if (Array.isArray(settings.features)){
+					availableFeatures[asrEngine] = settings.features;	//fixed engine
+				}else{
+					availableFeatures = settings.features;	//dynamic engine
 				}
 				if (!suggestedSettings){
 					suggestedSettings = {};
@@ -349,9 +373,10 @@
 							}
 						}	
 					}
-					if (foundI){
+					if (foundI != undefined){
 						asrOptions.language = settings.languages[foundI];
 						asrOptions.model = settings.models[foundI];
+						updatePhrasesAndHotWordsVisibility(asrOptions.model);
 					}
 					addMessage("INFO - Default language/model: " + asrOptions.language + "/" + asrOptions.model 
 						+ " - NOTE: If you set 'language' via settings make sure to remove 'model'!");
@@ -444,19 +469,50 @@
 			}
 
 			var phraseListInput = document.getElementById("phraseList");
-			if (phraseListInput){
-				phraseListInput.title = 'Enter phrases or words seperated by comma. Optionally add [unk] for "unknown". Write numbers as words. Use only letters.';
-				phraseListInput.addEventListener("blur", function(){
-					if (phraseListInput.value && phraseListInput.value.trim()){
-						phrases = phraseListInput.value.trim().split(/\s*(?:,|;|\.$|\. )\s*/g);
-						for (let i=0; i<phrases.length; i++){
-							phrases[i] = phrases[i].toLowerCase();
-						}
-					}else{
-						phrases = [];
+			var phraseListBox = document.getElementById("phraseListBox");
+			phraseListInput.title = 'Enter phrases or words seperated by comma. Optionally add [unk] for "unknown". Write numbers as words. Use only letters.';
+			phraseListInput.addEventListener("blur", function(){
+				if (phraseListInput.value && phraseListInput.value.trim()){
+					phrases = phraseListInput.value.trim().split(/\s*(?:,|;|\.$|\. )\s*/g);
+					for (let i=0; i<phrases.length; i++){
+						phrases[i] = phrases[i].toLowerCase();
 					}
-					console.log("phrases", phrases);
-				});
+				}else{
+					phrases = [];
+				}
+				console.log("phrases", phrases);
+			});
+			var hotWordsInput = document.getElementById("hotWords");
+			var hotWordsBox = document.getElementById("hotWordsBox");
+			hotWordsInput.title = 'Enter words and their boost value as word:boost objects seperated by comma, e.g. timer:2.0, sepia:1.5, ...';
+			hotWordsInput.addEventListener("blur", function(){
+				if (hotWordsInput.value && hotWordsInput.value.trim()){
+					hotWords = hotWordsInput.value.trim().split(/,/g);
+					for (let i=0; i<hotWords.length; i++){
+						let kv = hotWords[i].split(":");
+						let json = {};
+						json[kv[0].trim()] = +kv[1];
+						hotWords[i] = json;
+					}
+				}else{
+					hotWords = [];
+				}
+				console.log("hotWords", hotWords);
+			});
+			function updatePhrasesAndHotWordsVisibility(selectedModel){
+				var engine = availableModels[selectedModel].engine;
+				var engineFeatures = availableFeatures[engine];
+				console.log("Model:", selectedModel, "- Engine:", engine, "- Features:", engineFeatures);
+				if (engineFeatures && engineFeatures.indexOf("phrase_list") >= 0){
+					phraseListBox.classList.remove("hidden");
+				}else{
+					phraseListBox.classList.add("hidden");
+				}
+				if (engineFeatures && engineFeatures.indexOf("hot_words") >= 0){
+					hotWordsBox.classList.remove("hidden");
+				}else{
+					hotWordsBox.classList.add("hidden");
+				}
 			}
 
 			var messages = document.getElementById('messages');
@@ -521,6 +577,24 @@
 			function showAsrOptionsModal(){
 				var modalContent = document.createElement("div");
 				modalContent.innerHTML = "<p>Configure the ASR engine.</p>";
+				var modelLabel = document.createElement("label");
+				modelLabel.textContent = "Model:";
+				var modelSelect = document.createElement("select");
+				var modelSetBtn = document.createElement("button");
+				modelSetBtn.textContent = "Set";
+				modelLabel.appendChild(modelSelect);
+				modelLabel.appendChild(modelSetBtn);
+				modalContent.appendChild(modelLabel);
+				Object.keys(availableModels).forEach(function(m){
+					var modelProps = availableModels[m];
+					var opt = document.createElement("option");
+					opt.value = m;
+					opt.textContent = m;
+					if (asrOptions.model && asrOptions.model == m){
+						opt.selected = true;
+					}
+					modelSelect.appendChild(opt);
+				});
 				var optionsBox = document.createElement("textarea");
 				optionsBox.spellcheck = false;
 				optionsBox.textContent = JSON.stringify(asrOptions, null, 1);
@@ -537,11 +611,22 @@
 				}
 				*/
 				modalContent.appendChild(optionsBox);
+				//set button
+				modelSetBtn.onclick = function(){
+					if (modelSelect.value){
+						var ov = JSON.parse(optionsBox.value || "{}");
+						ov.model = modelSelect.value;
+						ov.language = availableModels[ov.model].language;
+						optionsBox.textContent = JSON.stringify(ov, null, 1);
+					}
+				}
+				//store/cancel buttons
 				var storeBtn = document.createElement("button");
 				storeBtn.textContent = "Store";
 				storeBtn.onclick = function(){
 					try {
-						asrOptions = JSON.parse(optionsBox.value);
+						asrOptions = JSON.parse(optionsBox.value || {});
+						if (asrOptions.model) updatePhrasesAndHotWordsVisibility(asrOptions.model);
 						mod.closeModal();
 					}catch (error){
 						storeBtn.textContent = "Store (Check JSON)";

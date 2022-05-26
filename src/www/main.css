@@ -203,6 +203,9 @@ h1 > button {
 	white-space: break-spaces;
     overflow: auto;
 }
+.modal-box label {
+	margin-left: 0;
+}
 .modal-box textarea {
 	box-sizing: border-box;
     width: 100%;
