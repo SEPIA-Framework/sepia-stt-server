@@ -16,6 +16,9 @@ label, input, select, label + span {
 	margin: 8px;
 	padding: 4px 6px;
 }
+.hidden {
+	display: none !important;
+}
 input[type=number] {
 	width: 64px;
 }

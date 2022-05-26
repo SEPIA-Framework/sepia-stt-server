@@ -66,9 +66,13 @@
 				<div class="group"><label>Options:</label><button id="asrOptionsBtn" class="round" onclick="showOptionsModal()">&#x270E;</button><!--&#x2699;--></div>
 			</div>
 			<div class="section">
-				<div class="group" style="flex: 1 0 auto;">
+				<div id="phraseListBox" class="group" style="flex: 1 0 auto;">
 					<label>Phrases:</label><input id="phraseList" style="flex: 1 0 auto;" type="text" autocomplete="off" value="" 
-						placeholder="A list of phrases or words to recognize (if supported by model)"/>
+						placeholder="A list of phrases or words to recognize (supported by some models)"/>
+				</div>
+				<div id="hotWordsBox" class="group" style="flex: 1 0 auto;">
+					<label>Hot words:</label><input id="hotWords" style="flex: 1 0 auto;" type="text" autocomplete="off" value="" 
+						placeholder="A list of 'word:boost' values (timer:5.0, ...) (supported by some models)"/>
 				</div>
 			</div>
 			<h2>Messages <button class="variant-2" onclick="clearMessages()" style="margin: 0 0 0 16px;">CLEAR</button></h2>
@@ -245,30 +249,45 @@
 			var serverUrl = document.getElementById("serverUrl");
 			serverUrl.value = location.href.replace(/(.*)\/www\/(.*?.html|)$/, "$1"); //location.origin;
 
+			var asrEngine = "";
 			var languageCode = "";
 			var asrModel = "";
-			var availableFeatures = [];
+			var availableFeatures = [];  //could also be {}
+			var availableModelProperties = {};
 			var activeOptions = {};
 			var phrases = [];
+			var hotWords = [];
 
 			function handleServerSettings(settings){
 				if (settings.version){
 					addMessage("INFO - Server version: " + settings.version);
 				}
 				if (settings.engine){
+					asrEngine = settings.engine;
 					addMessage("INFO - Active engine: " + settings.engine);
 					document.getElementById("asrEngine").textContent = settings.engine;
 				}
 				if (settings.languages){
 					buildSelectOptions(languageSelector, settings.languages, "Automatic");
+					languageSelector.value = "";
 					languageCode = languageSelector.value;
 					addMessage("INFO - Available ASR languages: " + JSON.stringify(settings.languages, null, 2));
 				}
 				if (settings.models){
 					buildSelectOptions(modelSelector, settings.models, "Automatic");
+					modelSelector.value = "";
 					asrModel = modelSelector.value;
 					addMessage("INFO - Available ASR models: " + JSON.stringify(settings.models, null, 2));
+					if (settings.modelProperties){
+						addMessage("INFO - ASR model properties: " + JSON.stringify(settings.modelProperties, null, 2));
+						settings.models.forEach(function(m, i){
+							availableModelProperties[m] = settings.modelProperties[i];
+						});
+					}else{
+						availableModelProperties = {}
+					}
 				}
+				activeOptions = {};
 				if (settings.features){
 					availableFeatures = settings.features;
 					document.getElementById("asrFeaturesBtn").title = JSON.stringify(availableFeatures, null, 1);
@@ -291,9 +310,32 @@
 				asrModel = newModel;
 				modelSelector.value = newModel;
 				activeOptions.model = asrModel;
+				delete activeOptions.scorer;		//make sure we always let the model choose the scorer
 				if (resetLanguage){
 					delete activeOptions.language; //since model has higher prio we remove that
 					languageSelector.value = "";
+				}
+				//update phrases and hot-words input
+				var modelProps = availableModelProperties[asrModel] || {};
+				var modelEngine = (asrEngine == "dynamic")? modelProps.engine : asrEngine;
+				var modelEngineFeatures = Array.isArray(availableFeatures)? availableFeatures : availableFeatures[modelEngine];
+				//DEBUG:
+				console.log("Model engine: ", modelEngine);
+				console.log("Model props.: ", modelProps);
+				console.log("Model engine feat.: ", modelEngineFeatures);
+				if (phraseListInput){
+					if (modelEngineFeatures && modelEngineFeatures.indexOf("phrase_list") >= 0){
+						phraseListInput.parentElement.classList.remove("hidden");
+					}else{
+						phraseListInput.parentElement.classList.add("hidden");
+					}
+				}
+				if (hotWordsInput){
+					if (modelEngineFeatures && modelEngineFeatures.indexOf("hot_words") >= 0){
+						hotWordsInput.parentElement.classList.remove("hidden");
+					}else{
+						hotWordsInput.parentElement.classList.add("hidden");
+					}
 				}
 			}
 
@@ -403,10 +445,16 @@
 						//overwrite custom settings
 						setLanguage(activeOptions.language || "", false);
 						setModel(activeOptions.model || "", false);
+						//var modelFeatures = msgJson.info? msgJson.info.features : [];
 						if (activeOptions.phrases && phrases && phrases.length){
 							activeOptions.phrases = phrases;
 						}else{
-							activeOptions.phrases = [];
+							delete activeOptions.phrases;
+						}
+						if (activeOptions.hotWords && hotWords && hotWords.length){
+							activeOptions.hotWords = hotWords;
+						}else{
+							delete activeOptions.hotWords;
 						}
 					}
 				}
@@ -578,10 +626,34 @@
 					}
 					console.log("phrases", phrases);
 					//add to options?
-					if (activeOptions.phrases && phrases && phrases.length){
+					if (phrases && phrases.length){
 						activeOptions.phrases = phrases;
 					}else{
 						activeOptions.phrases = [];
+					}
+				});
+			}
+			var hotWordsInput = document.getElementById("hotWords");
+			if (hotWordsInput){
+				hotWordsInput.title = 'Enter words and their boost value as word:boost objects seperated by comma, e.g. timer:2.0, sepia:1.5, ...';
+				hotWordsInput.addEventListener("blur", function(){
+					if (hotWordsInput.value && hotWordsInput.value.trim()){
+						hotWords = hotWordsInput.value.trim().split(/,/g);
+						for (let i=0; i<hotWords.length; i++){
+							let kv = hotWords[i].split(":");
+							let json = {};
+							json[kv[0].trim()] = +kv[1];
+							hotWords[i] = json;
+						}
+					}else{
+						hotWords = [];
+					}
+					console.log("hotWords", hotWords);
+					//add to options?
+					if (hotWords && hotWords.length){
+						activeOptions.hotWords = hotWords;
+					}else{
+						activeOptions.hotWords = [];
 					}
 				});
 			}
