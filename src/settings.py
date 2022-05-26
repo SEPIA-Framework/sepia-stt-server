@@ -7,7 +7,7 @@ import configparser
 
 # Server constants
 SERVER_NAME = "SEPIA STT Server"
-SERVER_VERSION = "0.10.0"
+SERVER_VERSION = "1.0.0"
 
 # ordered from hight to low prio
 SETTINGS_PATHS = [
@@ -55,6 +55,10 @@ class SettingsFile:
             self.port = int(settings.get("server", "port"))
             self.cors_origins = settings.get("server", "cors_origins").split(",")
             self.log_level = settings.get("server", "log_level")
+            self.socket_heartbeat_s = int(settings.get(
+                "server", "socket_heartbeat_s", fallback="10"))
+            self.socket_timeout_s = int(settings.get(
+                "server", "socket_timeout_s", fallback="15"))
             # Auth
             self.common_auth_token = settings.get("users", "common_auth_token")
             self.user_tokens = {}

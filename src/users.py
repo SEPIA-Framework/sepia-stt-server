@@ -16,9 +16,9 @@ from engine_interface import ModelNotFound, EngineNotFound
 # For now we just use a simple static token.
 COMMON_TOKEN = settings.common_auth_token
 
-# Client timeout - kick fast
-HEARTBEAT_DELAY = 10
-TIMEOUT_SECONDS = 15
+# Client timeout (s) - kick fast
+HEARTBEAT_DELAY = settings.socket_heartbeat_s
+TIMEOUT_SECONDS = settings.socket_timeout_s
 
 class SessionIds:
     """Generate session IDs"""
@@ -66,15 +66,19 @@ class SocketUser:
             except EngineNotFound:
                 logger.exception("ChunkProcessor - Engine not found")
                 await self.send_message(SocketErrorMessage(500,
-                    "ChunkProcessorError", "EngineNotFound: Failed to create processor."))
+                    "ChunkProcessorError",
+                    "Failed to create processor: EngineNotFound"))
             except ModelNotFound:
                 logger.exception("ChunkProcessor - ASR model not found")
                 await self.send_message(SocketErrorMessage(500,
-                    "ChunkProcessorError", "ModelNotFound: Failed to create processor."))
-            except RuntimeError:
+                    "ChunkProcessorError",
+                    "Failed to create processor: ModelNotFound"))
+            except RuntimeError as err:
                 logger.exception("ChunkProcessor - Failed to create processor")
+                logger.exception("ChunkProcessorError: %s", err)
                 await self.send_message(SocketErrorMessage(500,
-                    "ChunkProcessorError", "RuntimeError: Failed to create processor."))
+                    "ChunkProcessorError",
+                    f"Failed to create processor: {str(err)}"))
         else:
             logger.warning("User %s failed to authenticate!", client_id)
             await asyncio.sleep(3)

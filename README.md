@@ -27,11 +27,13 @@ If you are using custom models built for the 2018 version you can easily [conver
 
 ## Integrated ASR Engines
 
-- [Vosk](https://github.com/alphacep/vosk-api) - Status: Ready (Note: non-CUDA build). Includes tiny EN and DE models.
-- [Coqui](https://github.com/coqui-ai/STT) - Status: Planned.
+- [Vosk](https://github.com/alphacep/vosk-api) - Status: **Ready** (Note: non-CUDA build). Includes tiny EN and DE models.
+- [Coqui](https://github.com/coqui-ai/STT) - Status: **Ready**.
 - [Scribosermo](https://gitlab.com/Jaco-Assistant/Scribosermo) - Status: [experimenting with setup](https://github.com/fquirin/scribosermo-stt-setup).
+- [Nvidia NeMo](https://github.com/NVIDIA/NeMo) - Status: experimenting with setup.
 - [TensorFlowASR](https://github.com/TensorSpeech/TensorFlowASR) - Status: Help wanted.
-- If you want to see additional engines please create a new [issue](https://github.com/SEPIA-Framework/sepia-stt-server/issues). Pull requests are welcome ;-)
+
+If you want to see additional engines please create a new [issue](https://github.com/SEPIA-Framework/sepia-stt-server/issues). Pull requests are welcome ;-)
 
 ## Quick-Start with Python
 
@@ -83,7 +85,7 @@ NOTE: Commandline options always overrule the settings file but in most scenario
 
 ## ASR Engine Settings
 
-As soon as the server is running you can check the current setup via the HTTP REST interface: `http://localhost:20741//settings` or the test page (see quick-start above).  
+As soon as the server is running you can check the current setup via the HTTP REST interface: `http://localhost:20741/settings` or the test page (see quick-start above).  
   
 Individual settings for the active engine can be changed on-the-fly during the WebSocket 'welcome' event. See the [API docs](API.md) file for more info or check out the 'Engine Settings' section of the test page.
 

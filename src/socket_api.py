@@ -94,7 +94,11 @@ async def on_json_message(socket_message: SocketJsonInputMessage, user: SocketUs
             return
 
         await user.authenticate(socket_message)
-        if user.is_authenticated:
+        if not user.processor:
+            await user.send_message(SocketErrorMessage(500,
+                "Error", "ChunkProcessorError failed to load."))
+            await user.socket.close(1000)
+        elif user.is_authenticated:
             welcome_message = SocketWelcomeMessage(
                 socket_message.msg_id, user.processor.get_options())
             await user.send_message(welcome_message)

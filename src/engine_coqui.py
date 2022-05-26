@@ -10,6 +10,8 @@ from launch_setup import settings
 from engine_interface import EngineInterface, ModelNotFound
 from text_processor import TextToNumberProcessor, DateAndTimeOptimizer
 
+# TODO: add logger configuration
+
 class CoquiProcessor(EngineInterface):
     """Process chunks with Coqui"""
     def __init__(self, send_message, options: dict = None):
