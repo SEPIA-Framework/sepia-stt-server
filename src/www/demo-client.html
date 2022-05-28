@@ -10,7 +10,7 @@
 		<script type="text/javascript" src="common.js"></script>
 		
 		<!-- SEPIA Web Audio Lib -->
-		<script type="text/javascript" src="sepia-web-audio.min.js?v=0.9.7"></script>
+		<script type="text/javascript" src="sepia-web-audio.min.js?v=0.9.11"></script>
 		<script type="text/javascript" src="sepia-recorder.js"></script>
 		<script>
 			//set correct modules folder
@@ -179,6 +179,14 @@
 				waveBuffering = false;
 				SepiaVoiceRecorder.start();
 			}
+			SepiaVoiceRecorder.onConnected = function(info){
+				if (info && info.model){
+					addMessage("INFO - connected - ASR active model: " + info.model);
+				}
+			}
+			SepiaVoiceRecorder.onDisconnected = function(){
+				addMessage("INFO - disconnected from server");
+			}
 			SepiaVoiceRecorder.onProcessorInitError = function(err){
 				console.error("SepiaVoiceRecorder -  onProcessorInitError", err);
 				onMicError();
@@ -316,6 +324,7 @@
 			var asrOptions = {
 				//common options (usually supported by all engines):
 				language: "en-US",
+				task: "",
 				model: "",
 				continuous: true,
 				optimizeFinalResult: true,
@@ -601,7 +610,8 @@
 				/* Vosk example:
 				{
 					"language": languageCode,
-					"model": modelName
+					"task": taskName,
+					"model": modelName,
 					"samplerate": 16000,
 					"alternatives": 0,
 					"continuous": false,
@@ -617,6 +627,7 @@
 						var ov = JSON.parse(optionsBox.value || "{}");
 						ov.model = modelSelect.value;
 						ov.language = availableModels[ov.model].language;
+						ov.task = availableModels[ov.model].task || "";
 						optionsBox.textContent = JSON.stringify(ov, null, 1);
 					}
 				}

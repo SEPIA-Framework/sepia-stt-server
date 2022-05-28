@@ -21,12 +21,16 @@ class SepiaSttSocketClient {
 			samplerate: 16000,
 			continuous: false,
 			language: "",
+			task: "",
 			model: ""
 		}, engineOptions);
 
 		this.activeLanguageCode = this.activeOptions.language || "";
+		this.activeAsrTask = this.activeOptions.task || "";
 		this.activeAsrModel = this.activeOptions.model || "";
+		//NOTE: currently not assigned
 		this.phrases = this.activeOptions.phrases || [];
+		this.hotWords = this.activeOptions.hotWords || [];
 
 		this._msgId = 0;
 
@@ -197,6 +201,7 @@ class SepiaSttSocketClient {
 				//read active session/engine options
 				this.activeOptions = msgJson.info? msgJson.info.options : {};
 				this.activeLanguageCode = this.activeOptions.language || "";
+				this.activeAsrTask = this.activeOptions.task || "";
 				this.activeAsrModel = this.activeOptions.model || "";
 				this.isReadyForStream = true;
 				this._onReady(this.activeOptions);

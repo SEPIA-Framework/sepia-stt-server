@@ -10,6 +10,12 @@
 	SepiaVoiceRecorder.onProcessorInitError = function(err){
 		console.error("SepiaVoiceRecorder -  onProcessorInitError", err);
 	}
+	SepiaVoiceRecorder.onConnected = function(info){
+		console.log("SepiaVoiceRecorder -  onConnected", info);
+	}
+	SepiaVoiceRecorder.onDisconnected = function(info){
+		console.log("SepiaVoiceRecorder -  onDisconnected", info);
+	}
 
 	SepiaVoiceRecorder.onAudioStart = function(info){
 		console.log("SepiaVoiceRecorder -  onAudioStart");
@@ -121,7 +127,14 @@
 			SepiaVoiceRecorder.onSpeechRecognitionEvent(msg.recognitionEvent);
 		}
 		if (msg.connectionEvent){
-			//TODO: use? - type: open, ready, closed
+			//TODO: use? - type: open
+			if (msg.connectionEvent.type == "ready"){
+				//ready
+				SepiaVoiceRecorder.onConnected(msg.connectionEvent.data);
+			}else if (msg.connectionEvent.type == "closed"){
+				//closed
+				SepiaVoiceRecorder.onDisconnected(msg.connectionEvent.data);
+			}
 		}
 		//In debug or test-mode the module might send the recording:
 		if (msg.output && msg.output.wav){
@@ -244,6 +257,7 @@
 						//ASR engine common options
 						messageFormat: options.asr.messageFormat || "webSpeechApi",		//use events in 'webSpeechApi' compatible format
 						language: options.asr.language || "",
+						task: options.asr.task || "",
 						model: options.asr.model || "",
 						continuous: (options.asr.continuous != undefined? options.asr.continuous : false),	//one final result only?
 						optimizeFinalResult: options.asr.optimizeFinalResult,	//try to optimize result e.g. by converting text to numbers etc.
