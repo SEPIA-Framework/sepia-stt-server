@@ -37,6 +37,8 @@ class EngineInterface():
         self._asr_model_path = ""
         # -- model parameters
         self._asr_model_properties = []
+        # -- task (a way to load task specific models w/o knowing the name)
+        self._asr_task = options.get("task", None)
         # -- send final result once after stop event
         self._continuous_mode = options.get("continuous", False)
         # -- use text processors to optimize final result
@@ -51,18 +53,36 @@ class EngineInterface():
             else:
                 # Given model not found
                 raise ModelNotFound(f"ASR model name unknown: '{self._asr_model_name}'")
-        elif self._language and self._language in settings.asr_model_languages:
-            # Use first model that fits language
-            model_index = settings.asr_model_languages.index(self._language)
-        elif self._language and self.language_code_short:
-            # Take the first model that has the same basic language
-            base_lang_fit = [l for l in settings.asr_model_languages
-                if l.startswith(self.language_code_short)]
-            if base_lang_fit:
-                model_index = settings.asr_model_languages.index(base_lang_fit[0])
+        elif self._language:
+            # Do we have a language match?
+            if self._language not in settings.asr_model_languages:
+                # Take the first entry that has the same base language
+                base_lang_fits = [l for l in settings.asr_model_languages
+                    if l.startswith(self.language_code_short)]
+                if base_lang_fits:
+                    # overwrite given full language
+                    self._language = base_lang_fits[0]
+                    #model_index = settings.asr_model_languages.index(base_lang_fits[0])
+                else:
+                    # No language match, not even base language
+                    raise ModelNotFound(f"No ASR model for language: {self.language_code_short}")
+            # Do we have a task?
+            if self._asr_task:
+                model_index = None
+                # Find first model that fits language and task
+                for index, prop in enumerate(settings.asr_model_properties):
+                    if settings.asr_model_languages[index] == self._language:
+                        if "task" in prop and prop["task"] == self._asr_task:
+                            model_index = index
+                            break
+                if model_index is None:
+                    # Fallback to first model that fits language
+                    model_index = settings.asr_model_languages.index(self._language)
             else:
-                # Model not found
-                raise ModelNotFound(f"No ASR model for language: {self.language_code_short}")
+                # Use first model that fits language
+                model_index = settings.asr_model_languages.index(self._language)
+        elif self._asr_task:
+            raise ModelNotFound(f"No language defined for task: {self._asr_task}")
         else:
             # No given model or language -> Just take the first one available
             model_index = 0
