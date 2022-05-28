@@ -1,5 +1,10 @@
 # SEPIA Speech-To-Text Server
 
+## Vosk
+
+Below you will find instructions to install the Vosk (only) version of the server.  
+For the 'dynamic' version including Conqui-STT please use one of the Docker containers for now.
+
 ### Requirements
 
 Python 3.7 is recommended, 3.9 has been tested as well.  
@@ -13,6 +18,7 @@ sudo apt-get install -y python3-pip python3-dev python3-setuptools python3-wheel
 Basic Pip setup (the Vosk part might not work on all machines out-of-the-box):
 
 ```
+pip3 install pip --upgrade
 pip3 install cffi
 pip3 install fastapi
 pip3 install uvicorn[standard]
@@ -51,7 +57,7 @@ To add new models please modify your `server.conf` by adding a path and language
 
 If you've followed the instructions above go to `$HOME/sepia-stt/server` ('src' folder of the repo) and use:
 ```
-python -m launch
+python -m launch --settings=server-vosk.conf
 ```
 
 To see all commandline options run `python -m launch --help`.

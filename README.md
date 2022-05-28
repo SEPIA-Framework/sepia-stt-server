@@ -27,7 +27,7 @@ If you are using custom models built for the 2018 version you can easily [conver
 
 ## Integrated ASR Engines
 
-- [Vosk](https://github.com/alphacep/vosk-api) - Status: **Ready** (Note: non-CUDA build). Includes tiny EN and DE models.
+- [Vosk](https://github.com/alphacep/vosk-api) - Status: **Ready**. Includes tiny EN and DE models.
 - [Coqui](https://github.com/coqui-ai/STT) - Status: **Ready**.
 - [Scribosermo](https://gitlab.com/Jaco-Assistant/Scribosermo) - Status: [experimenting with setup](https://github.com/fquirin/scribosermo-stt-setup).
 - [Nvidia NeMo](https://github.com/NVIDIA/NeMo) - Status: experimenting with setup.
@@ -57,18 +57,19 @@ To test the server visit: `http://localhost:20741` if you are on the same machin
 
 ### Models
 
-Currently the server supports [Vosk ASR models](https://alphacephei.com/vosk/models) and custom models (see "adapt" section below).  
+Currently the server supports [Vosk ASR models](https://alphacephei.com/vosk/models), [Coqui-STT models](https://coqui.ai/models) and custom models (see "adapt" section below).  
   
 To **add new ASR models** create a shared volume for your container, place your model inside and update the server [config file](src/server.conf). The "adapt" section below has a more detailed example, but basically you can:
 - Add a volume to your container, e.g. use run flag: `-v [host-models-folder]:/home/admin/sepia-stt/models/my` (Note: use absolute path!)
 - Copy your model folder (e.g. 'vosk-model-small-es') and the server [config file](src/server.conf) to your new folder
-- Add model path and language code to the "[asr_models]" section in your config, e.g.: `path3=my/vosk-model-small-es` and `lang3=es-ES`
+- Add model path and language code to the "[asr_models]" section in your config, e.g.: `path3=my/vosk-model-small-es`, `lang3=es-ES`, `engine3=vosk` and optionally a "task" like `task3=smart-home`
 - Tell the server to use your new config via the flag: `--env SEPIA_STT_SETTINGS=/home/admin/sepia-stt/models/my/server.conf`
   
 Included inside the Docker containers are:
-- [vosk-model-small-en-us-0.15](https://github.com/SEPIA-Framework/sepia-stt-server/releases/download/v0.9.5/vosk-model-small-en-us-0.15.zip) - Lightweight wideband model for Android and RPi - Apache 2.0 license
-- [vosk-model-small-de-0.15](https://github.com/SEPIA-Framework/sepia-stt-server/releases/download/v0.9.5/vosk-model-small-de-0.15.zip) - Lightweight wideband model for Android and RPi - Apache 2.0 license
-- [vosk-model-spk-0.4](https://github.com/SEPIA-Framework/sepia-stt-server/releases/download/v0.9.5/vosk-model-spk-0.4.zip) - Model for speaker identification (all models) - Apache 2.0 license
+- [vosk-model-small-en-us-0.15](https://github.com/SEPIA-Framework/sepia-stt-server/releases/download/v0.9.5/vosk-model-small-en-us-0.15.zip) - Vosk lightweight wideband model for Android and RPi - Apache 2.0 license
+- [vosk-model-small-de-0.15](https://github.com/SEPIA-Framework/sepia-stt-server/releases/download/v0.9.5/vosk-model-small-de-0.15.zip) - Vosk lightweight wideband model for Android and RPi - Apache 2.0 license
+- [vosk-model-spk-0.4](https://github.com/SEPIA-Framework/sepia-stt-server/releases/download/v0.9.5/vosk-model-spk-0.4.zip) - Vosk model for speaker identification (all models) - Apache 2.0 license
+- [coqui-model-en-1.0.0](https://github.com/SEPIA-Framework/sepia-stt-server/releases/download/v1.0.0/coqui-model-en-1.0.0.zip) - Coqui basic English model w/o scorer for testing - Apache 2.0 license
 
 ## Server Settings
 
