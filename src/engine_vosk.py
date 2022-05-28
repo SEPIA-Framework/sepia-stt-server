@@ -10,7 +10,12 @@ from engine_interface import EngineInterface, ModelNotFound
 from text_processor import TextToNumberProcessor, DateAndTimeOptimizer
 
 # Vosk log level - -1: off, 0: normal, 1: more verbose
-SetLogLevel(-1)
+if settings.log_level == "warning" or settings.log_level == "error":
+    SetLogLevel(-1)
+elif settings.log_level == "debug":
+    SetLogLevel(1)
+else:
+    SetLogLevel(0)
 
 class VoskProcessor(EngineInterface):
     """Process chunks with Vosk"""
@@ -107,6 +112,7 @@ class VoskProcessor(EngineInterface):
         """Get Vosk options for active setup"""
         active_options = {
             "language": self._language,
+            "task": self._asr_task,
             "model": self._asr_model_name,
             "samplerate": self._sample_rate,
             "optimizeFinalResult": self._optimize_final_result,

@@ -6,7 +6,9 @@
 - Added new config file properties for models: 'engine', 'task', 'scorer', 'name'
 - Added new config file options for 'asr_engine': 'coqui' and 'dynamic'
 - Reworked config file loader to load only ONE file with all settings (no overwrites)
-- Reworked engine interface to load best model depending on: name, full language code (de-DE), partial language code (de), defaults
+- Added new common 'welcome' message options 'task' and Coqui specific 'hotWords' and 'scorer'
+- Accept alias names in 'welcome' message (streamlined with features): 'words_ts', 'phrase_list', 'hot_words' and 'external_scorer'
+- Reworked engine interface to load best model depending on: name, full language code (e.g.: de-DE), partial language code (e.g.: de), task or defaults
 - Added WebSocket connection heartbeat and timeout to config file
 - Improved error handling
 - Improved Vosk test script and added Coqui test

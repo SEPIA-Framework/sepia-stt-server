@@ -10,7 +10,8 @@ from launch_setup import settings
 from engine_interface import EngineInterface, ModelNotFound
 from text_processor import TextToNumberProcessor, DateAndTimeOptimizer
 
-# TODO: add logger configuration
+# TODO: logger configuration
+#logging.getLogger().setLevel(logging.WARNING)
 
 class CoquiProcessor(EngineInterface):
     """Process chunks with Coqui"""
@@ -106,6 +107,7 @@ class CoquiProcessor(EngineInterface):
         """Get Coqui options for active setup"""
         active_options = {
             "language": self._language,
+            "task": self._asr_task,
             "model": self._asr_model_name,
             "scorer": self._asr_model_scorer,
             "samplerate": self._sample_rate,

@@ -54,7 +54,9 @@ class SettingsFile:
             self.host = settings.get("server", "host")
             self.port = int(settings.get("server", "port"))
             self.cors_origins = settings.get("server", "cors_origins").split(",")
-            self.log_level = settings.get("server", "log_level")
+            self.log_level = settings.get("server", "log_level", fallback="warning")
+            #if self.log_level == "warning" or self.log_level == "error":
+                # TODO: add specific logger settings
             self.socket_heartbeat_s = int(settings.get(
                 "server", "socket_heartbeat_s", fallback="10"))
             self.socket_timeout_s = int(settings.get(
@@ -73,6 +75,7 @@ class SettingsFile:
             self.asr_engine = settings.get("app", "asr_engine", fallback="dynamic")
             if self.asr_engine == "all":
                 self.asr_engine = "dynamic" # alias for 'dynamic'
+            self.hot_swap_engines = True if self.asr_engine == "dynamic" else False
             self._available_engines = set({})   # keep track of all 'dynamic' engines in a set
             self.asr_model_paths = []       # required: folder
             self.asr_model_languages = []   # required: language code 'ab-CD'
