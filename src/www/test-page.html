@@ -59,9 +59,12 @@
 			</div>
 			<h2>Engine Settings <button class="variant-2" onclick="getServerInfo()" style="margin: 0 0 0 16px;">RELOAD</button></h2>
 			<div class="section">
-				<div class="group"><label>Engine:</label><span id="asrEngine">-?-</span></div>
 				<div class="group"><label>Language:</label><select id="languageSelect"><option selected>-?-</option></select></div>
+				<div class="group"><label>Task:</label><select id="taskSelect"><option selected>-?-</option></select></div>
 				<div class="group"><label>Model:</label><select id="modelSelect"><option selected>-?-</option></select></div>
+			</div>
+			<div class="section">
+				<div class="group"><label>Engine:</label><span id="asrEngine">-?-</span></div>
 				<div class="group"><label>Features:</label><button id="asrFeaturesBtn" class="round" onclick="showFeaturesModal()">i</button></div>
 				<div class="group"><label>Options:</label><button id="asrOptionsBtn" class="round" onclick="showOptionsModal()">&#x270E;</button><!--&#x2699;--></div>
 			</div>
@@ -252,6 +255,7 @@
 			var asrEngine = "";
 			var languageCode = "";
 			var asrModel = "";
+			var asrTask = "";
 			var availableFeatures = [];  //could also be {}
 			var availableModelProperties = {};
 			var activeOptions = {};
@@ -268,7 +272,8 @@
 				addMessage("INFO - Active engine: " + settings.engine);
 				document.getElementById("asrEngine").textContent = settings.engine;
 				//languages
-				buildSelectOptions(languageSelector, settings.languages, "Automatic");
+				buildSelectOptions(languageSelector,
+					settings.languages.filter((item, i, ar) => ar.indexOf(item) === i), "Automatic");
 				languageSelector.value = "";
 				languageCode = languageSelector.value;
 				addMessage("INFO - Available ASR languages: " + JSON.stringify(settings.languages, null, 2));
@@ -278,9 +283,17 @@
 				asrModel = modelSelector.value;
 				addMessage("INFO - Available ASR models: " + JSON.stringify(settings.models, null, 2));
 				addMessage("INFO - ASR model properties: " + JSON.stringify(settings.modelProperties, null, 2));
+				var tasks = [];
 				settings.models.forEach(function(m, i){
 					availableModelProperties[m] = settings.modelProperties[i];
+					if (settings.modelProperties[i].task){
+						tasks.push(settings.modelProperties[i].task);
+					}
 				});
+				//tasks
+				buildSelectOptions(taskSelector,
+					tasks.filter((item, i, ar) => ar.indexOf(item) === i), "Automatic");
+				taskSelector.value = "";
 				//features
 				availableFeatures = settings.features;
 				document.getElementById("asrFeaturesBtn").title = JSON.stringify(availableFeatures, null, 1);
@@ -288,10 +301,21 @@
 			function setLanguage(newLang, resetModel){
 				//NOTE: this assumes 'language' and 'model' are always available options!
 				languageCode = newLang;
-				languageSelector.value = newLang;
+				languageSelector.value = languageCode;
 				activeOptions.language = languageCode;
 				if (resetModel){
-					delete activeOptions.model; //since model has higher prio we remove that
+					//model has higher prio so we remove it
+					delete activeOptions.model;
+					modelSelector.value = "";
+				}
+			}
+			function setTask(newTask, resetModel){
+				asrTask = newTask;
+				taskSelector.value = asrTask;
+				activeOptions.task = asrTask;
+				if (resetModel){
+					//model has higher prio so we remove it
+					delete activeOptions.model;
 					modelSelector.value = "";
 				}
 			}
@@ -302,8 +326,11 @@
 				activeOptions.model = asrModel;
 				delete activeOptions.scorer;		//make sure we always let the model choose the scorer
 				if (resetLanguage){
-					delete activeOptions.language; //since model has higher prio we remove that
+					//model has higher prio so we overwrite
+					delete activeOptions.language; 	
 					languageSelector.value = "";
+					delete activeOptions.task;
+					taskSelector.value = "";
 				}
 				//update phrases and hot-words input
 				var modelProps = availableModelProperties[asrModel] || {};
@@ -332,6 +359,10 @@
 			var languageSelector = document.getElementById("languageSelect");
 			languageSelector.addEventListener("change", function(e){
 				setLanguage(languageSelector.value, true);
+			});
+			var taskSelector = document.getElementById("taskSelect");
+			taskSelector.addEventListener("change", function(e){
+				setTask(taskSelector.value, true);
 			});
 			var modelSelector = document.getElementById("modelSelect");
 			modelSelector.addEventListener("change", function(e){
@@ -434,6 +465,7 @@
 						activeOptions = msgJson.info? msgJson.info.options : {};
 						//overwrite custom settings
 						setLanguage(activeOptions.language || "", false);
+						setTask(activeOptions.task || "", false);
 						setModel(activeOptions.model || "", false);
 						//var modelFeatures = msgJson.info? msgJson.info.features : [];
 						if (activeOptions.phrases && phrases && phrases.length){
@@ -663,10 +695,10 @@
 				messages.innerHTML = "<li>Log:</li>";
 			}
 			var maxLogHeight = Math.ceil(window.innerHeight - messages.getBoundingClientRect().top - 58);
-			if (maxLogHeight > 150){
+			if (maxLogHeight > 142){
 				messages.style.height = maxLogHeight + "px";
 			}else{
-				messages.style.height = "150px";
+				messages.style.height = "142x";
 			}
 
 			function showInfoModal(msg){
