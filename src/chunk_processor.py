@@ -8,8 +8,11 @@ from uvicorn.config import logger
 from launch_setup import settings
 from socket_messages import (SocketJsonInputMessage, SocketResponseMessage, SocketErrorMessage)
 from engine_interface import EngineInterface, EngineNotFound
-from engine_vosk import VoskProcessor
-from engine_coqui import CoquiProcessor
+# imports based on settings.asr_engine:
+if settings.hot_swap_engines or settings.asr_engine == "vosk":
+    from engine_vosk import VoskProcessor
+if settings.hot_swap_engines or settings.asr_engine == "coqui":
+    from engine_coqui import CoquiProcessor
 
 def get_processor_instance(engine_name = None, send_message = None, options = None):
     """Create a new processor instance for a certain engine"""
