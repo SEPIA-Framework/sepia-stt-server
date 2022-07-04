@@ -81,6 +81,8 @@ RUN echo "Installing Vosk ..." && \
 		echo "Downloading Coqui-STT 1.3.0 for armv7l"; \
 		#wget https://github.com/coqui-ai/STT/releases/download/v1.3.0/stt-1.3.0-cp37-cp37m-linux_armv7l.whl; \
 		wget https://github.com/SEPIA-Framework/sepia-stt-server/releases/download/v1.0.0/stt-1.3.0-cp37-cp37m-linux_armv7l.whl; \
+		wget https://github.com/SEPIA-Framework/sepia-stt-server/releases/download/v1.0.0/numpy-1.21.6-cp37-cp37m-linux_armv7l.whl; \
+		pip3 install numpy-1.21.6-cp37-cp37m-linux_armv7l.whl; \
 		pip3 install stt-1.3.0-cp37-cp37m-linux_armv7l.whl; \
 	else \
 		echo "Downloading Coqui-STT 1.3.0 for x86_64"; \
