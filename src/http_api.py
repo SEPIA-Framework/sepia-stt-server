@@ -4,7 +4,7 @@ from fastapi import Response, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from launch import get_settings_response
+from launch_setup import settings
 
 class SettingsRequest(BaseModel):
     """Request to modify server settings"""
@@ -17,7 +17,7 @@ class HttpApiEndpoint:
         """Handle settings GET request"""
         data = {
             "result": "success",
-            "settings": get_settings_response()
+            "settings": settings.get_settings_response()
         }
         response = JSONResponse(content=data)
         return response

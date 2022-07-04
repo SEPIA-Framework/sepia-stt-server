@@ -5,16 +5,23 @@ body {
 	font-size: 15px;
 	position: relative;
 }
-h2 {
-	margin: 24px 0 8px 0;
-}
 h1, h2, h3 {
 	display: flex;
     align-items: center;
 }
+h1 {
+	font-size: 24px;
+}
+h2 {
+	margin: 24px 0 4px 0;
+	font-size: 20px;
+}
 label, input, select, label + span {
 	margin: 8px;
 	padding: 4px 6px;
+}
+.hidden {
+	display: none !important;
 }
 input[type=number] {
 	width: 64px;
@@ -27,6 +34,7 @@ label + span {
     border-radius: 3px;
 	cursor: default;
 	min-height: 16px;
+	margin-left: 0;
 }
 button {
 	background: #000;
@@ -170,7 +178,7 @@ h1 > button {
     border: 1px solid #aaa;
 	overflow: auto;
 	/*max-height: 40vh;*/
-	min-height: 150px;
+	min-height: 142px;
 }
 #messages li {
 	list-style: none;
@@ -199,6 +207,9 @@ h1 > button {
 	box-shadow: 0px 0px 4px 2px rgba(0, 0, 0, 0.25);
 	white-space: break-spaces;
     overflow: auto;
+}
+.modal-box label {
+	margin-left: 0;
 }
 .modal-box textarea {
 	box-sizing: border-box;

@@ -2,42 +2,39 @@
 
 import os
 import json
-import re
 
 from vosk import Model, SpkModel, KaldiRecognizer, SetLogLevel
 
-from launch import settings
-from engine_interface import EngineInterface
+from launch_setup import settings
+from engine_interface import EngineInterface, ModelNotFound
 from text_processor import TextToNumberProcessor, DateAndTimeOptimizer
 
 # Vosk log level - -1: off, 0: normal, 1: more verbose
-SetLogLevel(-1)
+if settings.log_level == "warning" or settings.log_level == "error":
+    SetLogLevel(-1)
+elif settings.log_level == "debug":
+    SetLogLevel(1)
+else:
+    SetLogLevel(0)
 
 class VoskProcessor(EngineInterface):
     """Process chunks with Vosk"""
     def __init__(self, send_message, options: dict = None):
         """Create Vosk processor"""
-        super().__init__(send_message)
-        # Options
-        if not options:
+        # Get all common options and defaults
+        super().__init__(send_message, options)
+        # Specific options:
+        if options is None:
             options = {}
-        # Common options - See 'EngineInterface'
-        self._sample_rate = options.get("samplerate", float(16000))
-        self._language = options.get("language")
-        if self._language:
-            self._language = self._language.replace("_", "-")  # make sure we have xx-XX format
-            self.language_code_short = re.split("[-]", self._language)[0].lower()
-        else:
-            self.language_code_short = None
-        self._asr_model_path = options.get("model", None)
-        self._continuous_mode = options.get("continuous", False)
-        self._optimize_final_result = options.get("optimizeFinalResult", False)
-        # Specific options
+        # -- typically shared options
+        # NOTE: difference between alternatives 0 and 1 is only the Vosk result format!
         self._alternatives = options.get("alternatives", int(1))
-        self._return_words = options.get("words", False)
-        try_speaker_detection = options.get("speaker", False)
-        self._phrase_list = options.get("phrases")
+        self._return_words = options.get("words", options.get("words_ts", False))
+        # -- list of custom phrases to recognize
         # example: self._phrase_list = ["hallo", "kannst du mich hören", "[unk]"]
+        self._phrase_list = options.get("phrases", options.get("phrase_list", None))
+        # -- speaker detection
+        try_speaker_detection = options.get("speaker", False)
         # NOTE: speaker detection does not work in all configurations
         if try_speaker_detection:
             self._speaker_detection = (settings.has_speaker_detection_model
@@ -45,27 +42,12 @@ class VoskProcessor(EngineInterface):
         else:
             self._speaker_detection = False
         # Recognizer
-        if self._asr_model_path:
-            # Reset language because model has higher priority
-            if self._asr_model_path in settings.asr_model_paths:
-                model_index = settings.asr_model_paths.index(self._asr_model_path)
-                self._language = settings.asr_model_languages[model_index]
-            else:
-                self._language = ""
-        elif not self._language or self._language not in settings.asr_model_languages:
-            self._asr_model_path = settings.asr_model_paths[0]
-            self._language = settings.asr_model_languages[0]
-        else:
-            model_index = settings.asr_model_languages.index(self._language)
-            self._asr_model_path = settings.asr_model_paths[model_index]
         asr_model_path = settings.asr_models_folder + self._asr_model_path
         # Speaker model
         spk_model_path = settings.speaker_models_folder + settings.speaker_model_paths[0]
         # Make sure paths exist and load models
-        if self._asr_model_path not in settings.asr_model_paths:
-            raise RuntimeError("ASR model path is not defined in available paths")
         if not os.path.exists(asr_model_path):
-            raise RuntimeError("ASR model path seems to be wrong")
+            raise ModelNotFound("ASR model path seems to be wrong")
         if self._speaker_detection and not os.path.exists(spk_model_path):
             raise RuntimeError("Speaker model path seems to be wrong")
         self._model = Model(asr_model_path)
@@ -130,7 +112,8 @@ class VoskProcessor(EngineInterface):
         """Get Vosk options for active setup"""
         active_options = {
             "language": self._language,
-            "model": self._asr_model_path,
+            "task": self._asr_task,
+            "model": self._asr_model_name,
             "samplerate": self._sample_rate,
             "optimizeFinalResult": self._optimize_final_result,
             "alternatives": self._alternatives,
@@ -150,8 +133,9 @@ class VoskProcessor(EngineInterface):
         """Handle a partial result"""
         if result and self._last_partial_str != result:
             self._last_partial_str = result
+            # Note: we disable words and alt. for partial results (not supported anyway)
             norm_result = VoskProcessor.normalize_result_format(
-                result, self._alternatives, self._return_words)
+                result, alternatives = int(1), return_words = False)
             self._partial_result = norm_result
             #print("PARTIAL: ", self._partial_result)
             await self._send(self._partial_result, False)
@@ -163,12 +147,12 @@ class VoskProcessor(EngineInterface):
             norm_result = VoskProcessor.normalize_result_format(
                 result, self._alternatives, self._return_words)
             if self._continuous_mode:
-                # In continous mode we send "intermediate" final results
+                # In continuous mode we send "intermediate" final results
                 self._final_result = norm_result
                 if not skip_send:
                     await self._send(self._final_result, True)
             else:
-                # In non-continous mode we remember one big result
+                # In non-continuous mode we remember one big result
                 self._final_result = VoskProcessor.append_to_result(self._final_result, norm_result)
             #print("FINAL (auto): ", self._final_result)
 
@@ -218,30 +202,31 @@ class VoskProcessor(EngineInterface):
     # ---- Helper functions ----
 
     @staticmethod
-    def normalize_result_format(result: str, alternatives = 0, has_words = False):
+    def normalize_result_format(result: str, alternatives: int = 0, return_words = False):
         """Vosk has many different formats depending on settings
         Convert result into a fixed format so we can handle it better"""
         json_result = json.loads(result)
         words = None
         if alternatives > 0 and "alternatives" in json_result:
+            # When alternatives is set the result format is different!
             json_result = json_result.get("alternatives", [])
             # handle array
-            alternatives = None
+            alternatives_list = None
             if len(json_result) > 1:
-                alternatives = json_result[1:]
-            if has_words:
+                alternatives_list = json_result[1:]
+            if return_words:
                 words = json_result[0].get("result")
             return VoskProcessor.build_normalized_result(json_result[0],
-                alternatives, words)
+                alternatives_list, words)
         else:
             # handle object
-            if has_words:
+            if return_words:
                 words = json_result.get("result")
             return VoskProcessor.build_normalized_result(json_result,
                 None, words)
 
     @staticmethod
-    def build_normalized_result(json_result, alternatives = None, words = None):
+    def build_normalized_result(json_result: dict, alternatives: list = None, words = None):
         """Build a result object that always looks the same"""
         # text or partial or empty:
         text = json_result.get("text", json_result.get("partial", json_result.get("final", "")))
@@ -253,7 +238,7 @@ class VoskProcessor(EngineInterface):
             "alternatives": alternatives
         }
         if words is not None:
-            result["words"] = words
+            result["words"] = words # NOTE: currently we only return words of first transcript
         if speaker_vec is not None:
             result["spk"] = speaker_vec
         return result

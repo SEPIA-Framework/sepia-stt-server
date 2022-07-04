@@ -7,17 +7,18 @@ from uvicorn.config import logger
 from fastapi import WebSocket
 from starlette.websockets import WebSocketState
 
-from launch import settings
+from launch_setup import settings
 from socket_messages import (SocketJsonInputMessage,
     SocketMessage, SocketPingMessage, SocketErrorMessage)
 from chunk_processor import ChunkProcessor
+from engine_interface import ModelNotFound, EngineNotFound
 
 # For now we just use a simple static token.
 COMMON_TOKEN = settings.common_auth_token
 
-# Client timeout - kick fast
-HEARTBEAT_DELAY = 10
-TIMEOUT_SECONDS = 15
+# Client timeout (s) - kick fast
+HEARTBEAT_DELAY = settings.socket_heartbeat_s
+TIMEOUT_SECONDS = settings.socket_timeout_s
 
 class SessionIds:
     """Generate session IDs"""
@@ -47,6 +48,7 @@ class SocketUser:
         client_id = socket_message.client_id
         token = socket_message.access_token
         processor_options = socket_message.data
+        engine_name = None   # NOTE: we let the ChunkProcessor choose
         # Try one token for all
         if COMMON_TOKEN and token == COMMON_TOKEN:
             self.is_authenticated = True
@@ -59,12 +61,24 @@ class SocketUser:
         # Create processor
         if self.is_authenticated:
             try:
-                self.processor = ChunkProcessor(processor_name=None,
+                self.processor = ChunkProcessor(engine_name=engine_name,
                     send_message=self.send_message, options=processor_options)
-            except RuntimeError:
-                logger.exception("ChunkProcessor - Failed to create processor")
+            except EngineNotFound:
+                logger.exception("ChunkProcessor - Engine not found")
                 await self.send_message(SocketErrorMessage(500,
-                    "ChunkProcessorError", "Failed to create processor."))
+                    "ChunkProcessorError",
+                    "Failed to create processor: EngineNotFound"))
+            except ModelNotFound:
+                logger.exception("ChunkProcessor - ASR model not found")
+                await self.send_message(SocketErrorMessage(500,
+                    "ChunkProcessorError",
+                    "Failed to create processor: ModelNotFound"))
+            except RuntimeError as err:
+                logger.exception("ChunkProcessor - Failed to create processor")
+                logger.exception("ChunkProcessorError: %s", err)
+                await self.send_message(SocketErrorMessage(500,
+                    "ChunkProcessorError",
+                    f"Failed to create processor: {str(err)}"))
         else:
             logger.warning("User %s failed to authenticate!", client_id)
             await asyncio.sleep(3)

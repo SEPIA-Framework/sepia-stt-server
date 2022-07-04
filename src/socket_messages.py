@@ -4,7 +4,7 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from launch import get_settings_response
+from launch_setup import settings
 
 class MessageIds:
     """Generate message IDs"""
@@ -26,7 +26,8 @@ class SocketJsonInputMessage(BaseModel):
     access_token: Optional[str] = None
     client_id: Optional[str] = None
     msg_id: int
-    #{"type": "welcome", "data": { "language": "en-US", "model": "...", "grammar": "..." }, "access_token": "", "client_id": "", "ts": 1620804751062, "msg_id": 1 }
+    # {"type": "welcome", "data": { "language": "en-US", "model": "...", "grammar": "..." },
+    #    "access_token": "", "client_id": "", "ts": 1620804751062, "msg_id": 1 }
 
 class SocketMessage():
     """Default socket message"""
@@ -60,7 +61,7 @@ class SocketWelcomeMessage(SocketMessage):
     """Welcome message (sent after authentication)"""
     def __init__(self, msg_id, processor_options = None):
         super().__init__("welcome", msg_id)
-        info = get_settings_response()
+        info = settings.get_settings_response()
         if processor_options:
             info["options"] = processor_options
         self.set_field("info", info)
@@ -71,7 +72,7 @@ class SocketTranscriptMessage(SocketMessage):
         super().__init__("result")
         self.set_field("transcript", transcript)
         self.set_field("isFinal", is_final)
-        if confidence >= 0:
+        if confidence is not None:
             self.set_field("confidence", confidence)
         if features is not None:
             self.set_field("features", features)    # This can be engine-specific (speaker_id etc.)

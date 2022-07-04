@@ -128,11 +128,6 @@ function gateControl(open, gateOptions, triggeredOnError){
 		msg.gate.isOpen = false;
 		msg.gate.openedAt = _gateOpenTS;
 		msg.gate.closedAt = _gateCloseTS;
-		var closedDueToBufferLimit = (!continuous && recordedBuffers && recordBufferMaxN 
-			&& recordedBuffers.length && recordedBuffers.length >= recordBufferMaxN);
-		if (closedDueToBufferLimit){
-			msg.gate.bufferOrTimeLimit = true;
-		}
 		//---------- DRY-RUN TEST: fake final result ----------
 		if (enableDryRun && recordedBuffers.length && recordedBuffers.length > recordBufferMaxN/3){
 			setTimeout(function(){
@@ -145,12 +140,14 @@ function gateControl(open, gateOptions, triggeredOnError){
 			}, 2000);
 		//-------------------------------------------------------
 		}else if (sttServer && sttServer.connectionIsOpen && sttServer.isReadyForStream){
-			var byteLength = 0;
-			recordedBuffers.forEach(function(ta){
-				byteLength += ta.byteLength;
-			});
-			sttServer.sendAudioEnd(byteLength, closedDueToBufferLimit);		//close input and request final result
+			var closedDueToBufferLimit = checkIfBufferLimitWasReached();
+			if (closedDueToBufferLimit){
+				msg.gate.bufferOrTimeLimit = true;
+			}
+			//close input and request final result
+			requestFinalResult(closedDueToBufferLimit);
 		}
+		//else we rely on '_gateCloseTS' to finish after last buffer is sent
 
 		//send WAV?
 		if (!triggeredOnError && returnAudioFile && recordedBuffers.length){
@@ -228,6 +225,7 @@ function constructWorker(options){
 		engineOptions.samplerate = inputSampleRate;
 		engineOptions.continuous = continuous;
 		if (options.setup.language) engineOptions.language = options.setup.language;	//e.g.: "de-DE"
+		if (options.setup.task) engineOptions.task = options.setup.task;				//e.g.: "conversation"
 		if (options.setup.model) engineOptions.model = options.setup.model;				//e.g.: "vosk-model-small-de"
 		if (options.setup.optimizeFinalResult != undefined) engineOptions.optimizeFinalResult = options.setup.optimizeFinalResult;
 		engineOptions.doDebug = doDebug;
@@ -246,7 +244,7 @@ function constructWorker(options){
 			},
 			onReady: function(activeOptions){
 				if (doDebug) console.error("SttSocketWorker - DEBUG - CONNECTION READY", activeOptions);
-				sendConnectionEvent("ready");
+				sendConnectionEvent("ready", activeOptions);
 				//make sure stream starts or continues
 				startOrContinueStream();
 			},
@@ -419,9 +417,29 @@ function startOrContinueStream(){
 	}else{
 		//ignore
 	}
+	//no bytes left and stream ended?
+	if (_gateCloseTS){
+		var closedDueToBufferLimit = checkIfBufferLimitWasReached();
+		requestFinalResult(closedDueToBufferLimit);
+	}
 }
 function sendBytes(data){
 	sttServer.sendBytes(data);
+}
+
+function requestFinalResult(closedDueToBufferLimit){
+	//close input and request final result
+	var byteLength = 0;
+	recordedBuffers.forEach(function(ta){
+		byteLength += ta.byteLength;
+	});
+	sttServer.sendAudioEnd(byteLength, closedDueToBufferLimit);
+}
+
+function checkIfBufferLimitWasReached(){
+	var reachedBufferLimit = (!continuous && recordedBuffers && recordBufferMaxN 
+		&& recordedBuffers.length && recordedBuffers.length >= recordBufferMaxN);
+	return reachedBufferLimit;
 }
 
 function clearBuffer(){
@@ -452,20 +470,25 @@ function maxLengthReached(){
 
 //send result message (partial or final)
 function sendWebSpeechCompatibleRecognitionResult(isFinal, transcript){
-	postMessage({
-		recognitionEvent: {
-			type: "result",
-			resultIndex: 0,
-			results: [{
-				isFinal: isFinal,
-				"0": {
-					transcript: transcript
-				}
-			}],
-			timeStamp: Date.now()
-		},
-		eventFormat: "webSpeechApi"
-	});
+	if (isFinal && !transcript){
+		//this is actually a 'nomatch'/'no-speech' error (no-speech usually fails more gently)
+		sendWebSpeechCompatibleError("no-speech", "Final result was empty");
+	}else{
+		postMessage({
+			recognitionEvent: {
+				type: "result",
+				resultIndex: 0,
+				results: [{
+					isFinal: isFinal,
+					"0": {
+						transcript: transcript
+					}
+				}],
+				timeStamp: Date.now()
+			},
+			eventFormat: "webSpeechApi"
+		});
+	}
 }
 function sendDefaultRecognitionResult(event){
 	if (event && !event.type) event.type = "result";
