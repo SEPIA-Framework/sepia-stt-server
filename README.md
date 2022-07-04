@@ -43,7 +43,7 @@ The easiest way to get started is to use a Docker container for your platform. T
 
 Simply pull the latest image (or choose an older one from the archive). The smallest English and German Vosk models and an English Coqui model (w/o scorer) are included:
 ```
-`docker pull sepia/stt-server:latest`
+docker pull sepia/stt-server:latest
 ```
 
 Supported platforms:
