@@ -14,6 +14,7 @@ RUN echo 'Installing dependencies...' && \
     python3-pip python3-dev python3-setuptools python3-wheel \
     #amd64 only? moved to adapt package: libatlas-base-dev \
     libffi-dev && \
+    pip3 install pip --upgrade && \
 #
 #   Fast-API
     pip3 install cffi && \
@@ -69,6 +70,31 @@ RUN echo "Installing Vosk ..." && \
 	mv vosk-model-small-de-0.15 /home/admin/sepia-stt/models/vosk-model-small-de && \
 	unzip vosk-model-spk-0.4.zip && \
 	mv vosk-model-spk-0.4 /home/admin/sepia-stt/models/vosk-model-spk && \
+#
+	echo "Installing Coqui-STT ..." && \
+	mkdir -p /home/admin/sepia-stt/models/coqui-model-en && \
+	if [ -n "$(uname -m | grep aarch64)" ]; then \
+		echo "Downloading Coqui-STT 1.3.0 for aarch64"; \
+		#wget https://github.com/coqui-ai/STT/releases/download/v1.3.0/stt-1.3.0-cp37-cp37m-linux_aarch64.whl; \
+		wget https://github.com/SEPIA-Framework/sepia-stt-server/releases/download/v1.0.0/stt-1.3.0-cp37-cp37m-linux_aarch64.whl; \
+		pip3 install stt-1.3.0-cp37-cp37m-linux_aarch64.whl; \
+	elif [ -n "$(uname -m | grep armv7l)" ]; then \
+		echo "Downloading Coqui-STT 1.3.0 for armv7l"; \
+		#wget https://github.com/coqui-ai/STT/releases/download/v1.3.0/stt-1.3.0-cp37-cp37m-linux_armv7l.whl; \
+		wget https://github.com/SEPIA-Framework/sepia-stt-server/releases/download/v1.0.0/stt-1.3.0-cp37-cp37m-linux_armv7l.whl; \
+		pip3 install stt-1.3.0-cp37-cp37m-linux_armv7l.whl; \
+	else \
+		echo "Downloading Coqui-STT 1.3.0 for x86_64"; \
+		#wget https://github.com/coqui-ai/STT/releases/download/v1.3.0/stt-1.3.0-cp37-cp37m-manylinux_2_24_x86_64.whl; \
+		wget https://github.com/SEPIA-Framework/sepia-stt-server/releases/download/v1.0.0/stt-1.3.0-cp37-cp37m-manylinux_2_24_x86_64.whl; \
+		pip3 install stt-1.3.0-cp37-cp37m-manylinux_2_24_x86_64.whl; \
+	fi && \
+	#cd /home/admin/sepia-stt/models/coqui-model-en && \
+	#wget https://coqui.gateway.scarf.sh/english/coqui/v1.0.0-large-vocab/model.tflite && \
+	#cd /home/admin/install && \
+	wget https://github.com/SEPIA-Framework/sepia-stt-server/releases/download/v1.0.0/coqui-model-en-1.0.0.zip && \
+	unzip coqui-model-en-1.0.0.zip && \
+	mv coqui-model-en-1.0.0 /home/admin/sepia-stt/models/coqui-model-en && \
 #
 	echo "Installing SEPIA STT ..." && \
 	SEPIA_STT_BRANCH=master && \
