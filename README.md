@@ -28,7 +28,7 @@ If you are using custom models built for the 2018 version you can easily [conver
 ## Integrated ASR Engines
 
 - [Vosk](https://github.com/alphacep/vosk-api) - Status: **Ready**. Includes tiny EN and DE models.
-- [Coqui](https://github.com/coqui-ai/STT) - Status: **Ready**.
+- [Coqui](https://github.com/coqui-ai/STT) - Status: **Ready**. Includes basic English model w/o scorer.
 - [Scribosermo](https://gitlab.com/Jaco-Assistant/Scribosermo) - Status: [experimenting with setup](https://github.com/fquirin/scribosermo-stt-setup).
 - [Nvidia NeMo](https://github.com/NVIDIA/NeMo) - Status: experimenting with setup.
 - [TensorFlowASR](https://github.com/TensorSpeech/TensorFlowASR) - Status: Help wanted.
@@ -41,14 +41,19 @@ The easiest way to get started is to use a Docker container for your platform. T
 
 ## Quick-Start with Docker
 
-Choose your platform and pull the image. The smallest English and German Vosk models are already included:
-- ARM 32Bit (Raspberry Pi 4 32Bit OS): `docker pull sepia/stt-server:vosk_armv7l`
-- ARM 64Bit (RPi 4 64Bit, Jetson Nano(?)): `docker pull sepia/stt-server:vosk_aarch64`
-- x86 64Bit Systems (Desktop PCs, Linux server etc.): `docker pull sepia/stt-server:vosk_amd64`
-
-After the download is complete simply start the container, for example via:  
+Simply pull the latest image (or choose an older one from the archive). The smallest English and German Vosk models and an English Coqui model (w/o scorer) are included:
 ```
-sudo docker run --rm --name=sepia-stt -p 20741:20741 -it sepia/stt-server:[image-tag]
+`docker pull sepia/stt-server:latest`
+```
+
+Supported platforms:
+- ARM 32Bit (Raspberry Pi 4 32Bit OS) 
+- ARM 64Bit (RPi 4 64Bit, Jetson Nano(?))
+- x86 64Bit Systems (Desktop PCs, Linux server etc.)
+
+After the download is finished you can start the container like this:  
+```
+sudo docker run --rm --name=sepia-stt -p 20741:20741 -it sepia/stt-server:latest
 ```
 
 ### Test via web interface
@@ -78,11 +83,11 @@ Most of the settings can be handled easily via the [server.conf settings file](s
 ENV variables:
 - `SEPIA_STT_SETTINGS`: Overwrites default path to settings file
 
-Commandline options:
-- Use `python -m launch -h` to see all commandline options
+Command line options:
+- Use `python -m launch -h` to see all command line options
 - Use `python -m launch -s [path-to-file]` to use custom settings
 
-NOTE: Commandline options always overrule the settings file but in most scenarios it makes sense to simply create a new settings file and use the `-s` flag.
+NOTE: Command line options always overrule the settings file but in most scenarios it makes sense to simply create a new settings file and use the `-s` flag.
 
 ## ASR Engine Settings
 
@@ -132,7 +137,7 @@ sudo docker run --rm --name=sepia-stt -p 20741:20741 -it \
 	-v [host-models-folder]:/home/admin/sepia-stt/models/my \
 	-v [host-share-folder]:/home/admin/sepia-stt/share \
 	--env SEPIA_STT_SETTINGS=/home/admin/sepia-stt/share/my.conf \
-	sepia/stt-server:[image-tag] \
+	sepia/stt-server:latest \
 	/bin/bash
 ```
 
