@@ -1,9 +1,18 @@
 # SEPIA Speech-To-Text Server
 
-## Vosk
+## Engine: Dynamic (all)
 
-Below you will find instructions to install the Vosk (only) version of the server.  
-For the 'dynamic' version including Conqui-STT please use one of the Docker containers for now.
+Installing all engines can be a bit tricky. You can try the included [install.sh](../scripts) script to install the STT-Server locally:
+```
+wget https://raw.githubusercontent.com/SEPIA-Framework/sepia-stt-server/master/scripts/install.sh
+bash install.sh -h
+```
+
+If that doesn't work (because of dependency/Python/platform issues) you can always use the Docker container or try the simpler setup (see below).
+
+## Engine: Vosk (only)
+
+Below you will find instructions to install the Vosk (only) version of the server.
 
 ### Requirements
 
