@@ -37,7 +37,7 @@ If you want to see additional engines please create a new [issue](https://github
 
 ## Quick-Start with Python
 
-The easiest way to get started is to use a Docker container for your platform. To install the server yourself please see the [code section README](src/README.md).
+The easiest way to get started is to use a Docker container for your platform. To install the server yourself please see the [code section README](src/README.md) or [scripts section](scripts).
 
 ## Quick-Start with Docker
 

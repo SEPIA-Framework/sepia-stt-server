@@ -1,8 +1,0 @@
-# Last tested 2021.12.29 with Python 3.9.2
-#
-cffi ~= 1.15				# tested: 0.15.0
-fastapi ~= 0.70				# tested: 0.70.1
-uvicorn[standard] ~= 0.16	# tested: 0.16.0
-aiofiles ~= 0.8				# tested: 0.8.0
-vosk ~= 0.3					# tested: 0.3.32
-# text2num ~= 2.5			# custom version already included
