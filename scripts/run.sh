@@ -12,6 +12,10 @@ if [ -f "log.out" ]; then
 	cp log.out "logs/backup_$(log_date).out"
 	rm log.out
 fi
+if [ -d "venv" ]; then
+	echo "$(log_date) - Activating Python virtual environment (venv)" > log.out
+	source "venv/bin/activate"
+fi
 echo "Running SEPIA STT-Server"
 echo "$(log_date) - Start" > log.out
 cd server

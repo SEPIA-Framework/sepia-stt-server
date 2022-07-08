@@ -31,6 +31,7 @@ else
 fi
 if [ "$autoconfirm" = "0" ]; then
 	echo "This script will download the SEPIA STT-Server and try to install it locally."
+	echo "Please clean-up the folder before if it contains an old installation!"
 	echo ""
 	echo "Install path (p): $install_path"
 	echo "Code branch (b): $code_branch"
@@ -49,6 +50,7 @@ if [ "$autoconfirm" = "0" ]; then
 	echo ""
 	echo "NOTE: You can use the '-y' flag to automatically confirm all questions."
 	echo "If you experience problems please consider using the Docker container or the latest Python Wheel files from the release."
+	echo "Alternatively you can fallback to Vosk-only mode (-s 2) which is easier to install."
 	echo ""
 	read -p "Enter 'ok' to continue: " okabort
 	echo ""
@@ -72,7 +74,9 @@ echo ""
 echo "Downloading STT-Server (branch: $code_branch) ..."
 git clone --single-branch --depth 1 -b "$code_branch" https://github.com/SEPIA-Framework/sepia-stt-server.git
 mv sepia-stt-server/src ./server
-mv sepia-stt-server/scripts/* ./
+mv sepia-stt-server/scripts/run.sh ./
+mv sepia-stt-server/scripts/shutdown.sh ./
+mv sepia-stt-server/scripts/status.sh ./
 rm -rf sepia-stt-server
 echo ""
 echo "Installing Python server requirements ..."
@@ -95,11 +99,11 @@ mkdir -p models
 mkdir -p downloads
 # Virtual env?
 if [ "$virtualenv" = "1" ]; then
-	if [ -d ".venv" ]; then
-		source env/bin/activate
+	if [ -d "venv" ]; then
+		source "venv/bin/activate"
 	else
-		python3 -m venv ".venv"
-		source env/bin/activate
+		python3 -m venv "venv"
+		source "venv/bin/activate"
 	fi
 fi
 # Server
@@ -110,7 +114,19 @@ pip3 install -r requirements_server.txt
 if [ "$asr_engine" = "dynamic" ] || [ "$asr_engine" = "vosk" ]; then
 	echo ""
 	echo "Installing Vosk requirements ..."
-	pip3 install -r requirements_vosk.txt
+	#currently aarch64 files are missing on PyPI
+	#pip3 install -r requirements_vosk.txt
+	vosk_wheel=""
+	if [ "$PLATFORM" = "aarch64" ]; then
+		vosk_wheel="vosk-0.3.42-py3-none-linux_aarch64.whl"
+	elif [ "$PLATFORM" = "armv7l" ]; then
+		vosk_wheel="vosk-0.3.42-py3-none-linux_armv7l.whl"
+	else
+		vosk_wheel="vosk-0.3.42-py3-none-linux_x86_64.whl"
+	fi
+	wget https://github.com/SEPIA-Framework/sepia-stt-server/releases/download/v1.0.0/$vosk_wheel
+	pip3 install $vosk_wheel
+	rm $vosk_wheel
 fi
 # Coqui engine
 if [ "$asr_engine" = "dynamic" ] || [ "$asr_engine" = "coqui" ]; then
