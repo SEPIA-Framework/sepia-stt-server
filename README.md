@@ -114,7 +114,7 @@ or the [python-client](python-client/example.py) source-code.
   
 Demo clients:
 - Server test page(s): `http://localhost:20741` (with microphone) or `http://[server-IP]:20741` (no microphone due to "insecure" origin)
-- Python client: `[python-client](python-client)`
+- Python client: [python-client](python-client)
 - [SEPIA Client app](https://sepia-framework.github.io/app/) (v0.24+, simply skip the login, go to settings and enter your server URL)
 
 ## Using Customized ASR Models
