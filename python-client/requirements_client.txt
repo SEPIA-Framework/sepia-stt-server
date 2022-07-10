@@ -1,0 +1,5 @@
+# Last tested 2022.07.08 with Python 3.7.4
+#
+websockets
+pyaudio
+pynput
