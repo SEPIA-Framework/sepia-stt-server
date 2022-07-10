@@ -56,9 +56,11 @@ After the download is finished you can start the container like this:
 sudo docker run --rm --name=sepia-stt -p 20741:20741 -it sepia/stt-server:latest
 ```
 
-### Test via web interface
+### Test via web interface or Python client
 
-To test the server visit: `http://localhost:20741` if you are on the same machine or `http://[server-IP]:20741` if you are in the same network (NOTE: custom recordings via microphone will only work using localhost or a HTTPS URL!).
+To test the server visit: `http://localhost:20741` if you are on the same machine or `http://[server-IP]:20741` if you are in the same network (NOTE: custom recordings via microphone will only work using localhost or a HTTPS URL!).  
+  
+Alternatively you can use the [python-client](python-client) to test your server.
 
 ### Models
 
@@ -107,10 +109,12 @@ and thus the link to your server must be secure as well (e.g. use a real domain 
 
 ## Develop your own Client
 
-See the separate [API docs](API.md) file or check out the [Javascript client class](src/www/audio-modules/shared/sepia-stt-socket-client.js) and the [test page](src/www/test-page.html) source-code.  
+See the separate [API docs](API.md) file or check out the [Javascript client class](src/www/audio-modules/shared/sepia-stt-socket-client.js), the [HTML test page](src/www/test-page.html)
+or the [python-client](python-client/example.py) source-code.  
   
 Demo clients:
 - Server test page(s): `http://localhost:20741` (with microphone) or `http://[server-IP]:20741` (no microphone due to "insecure" origin)
+- Python client: `[python-client](python-client)`
 - [SEPIA Client app](https://sepia-framework.github.io/app/) (v0.24+, simply skip the login, go to settings and enter your server URL)
 
 ## Using Customized ASR Models

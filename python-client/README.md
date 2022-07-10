@@ -7,11 +7,13 @@ Check-out [example.py](example.py) for a simple demo.
 
 - Make sure you have a STT-Server running somewhere (in your network), default: `http://localhost:20741`
 - Get the `python-client` folder from this repository
-- Install requirements: `pip install requirements_client.txt`
+- Install requirements: `pip install -r requirements_client.txt`
 - Make sure your microphone is connected
 - Run the demo: `python example.py --server "http://localhost:20741"` or check the options `python example.py -h`
-- If the connection to the server works you should see some info messages and a READY event
-- Press and hold 'r' to record audio and watch the transcription appear on the screen :-)
+- If the connection to the server works you should see some info messages and a READY event appearing after a short time
+- After the ready event press and hold 'r' to record audio and watch the transcription appear on the screen :-)
+
+You can use the info messages on the screen to get valid options for 'language', 'task', 'model' and more.
 
 ## Contribute
 
