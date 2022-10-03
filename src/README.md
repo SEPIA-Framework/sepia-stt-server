@@ -21,7 +21,7 @@ Please see 'requirements.txt' for more details or check out the **Dockerfile** i
   
 Install recommended Linux packages (Debian 10|11 example):
 ```
-sudo apt-get install -y python3-pip python3-dev python3-setuptools python3-wheel libffi-dev
+sudo apt-get install -y python3-pip python3-dev python3-venv python3-setuptools python3-wheel libffi-dev
 ```
 
 Basic Pip setup (the Vosk part might not work on all machines out-of-the-box):

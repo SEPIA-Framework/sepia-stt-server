@@ -68,7 +68,7 @@ cd "$install_path"
 #
 echo "Installing Linux packages ..."
 sudo apt update
-sudo apt-get install -y --no-install-recommends git build-essential unzip procps python3-pip python3-dev python3-setuptools python3-wheel libffi-dev
+sudo apt-get install -y --no-install-recommends git build-essential unzip procps python3-pip python3-dev python3-venv python3-setuptools python3-wheel libffi-dev
 #amd64 only? libatlas-base-dev
 echo ""
 echo "Downloading STT-Server (branch: $code_branch) ..."
