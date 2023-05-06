@@ -199,7 +199,7 @@ class SepiaSttSocketClient {
 			}else if (msgJson.type == "welcome"){
 				this.log("Connection WELCOME");
 				//read active session/engine options
-				this.activeOptions = msgJson.info? msgJson.info.options : {};
+				this.activeOptions = (msgJson.info? msgJson.info.options : {}) || {};
 				this.activeLanguageCode = this.activeOptions.language || "";
 				this.activeAsrTask = this.activeOptions.task || "";
 				this.activeAsrModel = this.activeOptions.model || "";

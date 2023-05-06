@@ -70,6 +70,10 @@
 					<label>Hot words:</label><input id="hotWords" style="flex: 1 0 auto;" type="text" autocomplete="off" value="" 
 						placeholder="A list of 'word:boost' values (timer:5.0, ...) (supported by some models)"/>
 				</div>
+				<div id="initPromptBox" class="group hidden" style="flex: 1 0 100%;">
+					<label>Prompt:</label><input id="initPrompt" style="flex: 1 0 auto;" type="text" autocomplete="off" value="" 
+						placeholder="An initial prompt to tune the model (supported by Whisper)"/>
+				</div>
 			</div>
 			<!--<h2>Engine Settings <button class="variant-2" onclick="getServerInfo()" style="margin: 0 0 0 16px;">RELOAD</button></h2>-->
 			<h2>Result</h2>
@@ -126,6 +130,10 @@
 						if (hotWords.length){
 							if (!opt.engineOptions) opt.engineOptions = {};
 							opt.engineOptions.hotWords = hotWords;
+						}
+						if (initPrompt){
+							if (!opt.engineOptions) opt.engineOptions = {};
+							opt.engineOptions.prompt = initPrompt;
 						}
 						SepiaVoiceRecorder.create({
 							gain: +gainNode.value,
@@ -186,6 +194,9 @@
 			}
 			SepiaVoiceRecorder.onDisconnected = function(){
 				addMessage("INFO - disconnected from server");
+				if (isRecording){
+					SepiaVoiceRecorder.stop();
+				}
 			}
 			SepiaVoiceRecorder.onProcessorInitError = function(err){
 				console.error("SepiaVoiceRecorder -  onProcessorInitError", err);
@@ -334,6 +345,7 @@
 			};
 			var phrases = [];
 			var hotWords = [];
+			var initPrompt = undefined;
 
 			var asrEngine = "";
 			var availableFeatures = {};
@@ -385,7 +397,7 @@
 					if (foundI != undefined){
 						asrOptions.language = settings.languages[foundI];
 						asrOptions.model = settings.models[foundI];
-						updatePhrasesAndHotWordsVisibility(asrOptions.model);
+						updateCustomFeaturesVisibility(asrOptions.model);
 					}
 					addMessage("INFO - Default language/model: " + asrOptions.language + "/" + asrOptions.model 
 						+ " - NOTE: If you set 'language' via settings make sure to remove 'model'!");
@@ -508,19 +520,36 @@
 				}
 				console.log("hotWords", hotWords);
 			});
-			function updatePhrasesAndHotWordsVisibility(selectedModel){
+			var initPromptInput = document.getElementById("initPrompt");
+			var initPromptBox = document.getElementById("initPromptBox");
+			initPromptInput.title = 'Enter a text to tune the model. The effect on Whisper is somewhat magical, but you can use it to improve recognition of some words.';
+			initPromptInput.addEventListener("blur", function(){
+				if (initPromptInput.value && initPromptInput.value.trim()){
+					initPrompt = initPromptInput.value.trim();
+				}else{
+					initPrompt = undefined;
+				}
+				console.log("initPrompt", initPrompt);
+			});
+			function updateCustomFeaturesVisibility(selectedModel){
 				var engine = availableModels[selectedModel].engine;
-				var engineFeatures = availableFeatures[engine];
+				var engineFeatures = availableFeatures[engine] || [];
 				console.log("Model:", selectedModel, "- Engine:", engine, "- Features:", engineFeatures);
-				if (engineFeatures && engineFeatures.indexOf("phrase_list") >= 0){
+				addMessage("INFO - Selected model: " + selectedModel + " - Available engine options: [" + engineFeatures.join(", ") + "]");
+				if (engineFeatures.indexOf("phrase_list") >= 0){
 					phraseListBox.classList.remove("hidden");
 				}else{
 					phraseListBox.classList.add("hidden");
 				}
-				if (engineFeatures && engineFeatures.indexOf("hot_words") >= 0){
+				if (engineFeatures.indexOf("hot_words") >= 0){
 					hotWordsBox.classList.remove("hidden");
 				}else{
 					hotWordsBox.classList.add("hidden");
+				}
+				if (engineFeatures.indexOf("init_prompt") >= 0){
+					initPromptBox.classList.remove("hidden");
+				}else{
+					initPromptBox.classList.add("hidden");
 				}
 			}
 
@@ -637,7 +666,7 @@
 				storeBtn.onclick = function(){
 					try {
 						asrOptions = JSON.parse(optionsBox.value || {});
-						if (asrOptions.model) updatePhrasesAndHotWordsVisibility(asrOptions.model);
+						if (asrOptions.model) updateCustomFeaturesVisibility(asrOptions.model);
 						mod.closeModal();
 					}catch (error){
 						storeBtn.textContent = "Store (Check JSON)";

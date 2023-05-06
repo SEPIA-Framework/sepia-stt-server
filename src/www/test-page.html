@@ -439,7 +439,7 @@
 						try {
 							handleSocketMessage(JSON.parse(event.data));
 						}catch(err){
-							addMessage("ERROR - message handler saw invlaid JSON? " + err.name);
+							addMessage("ERROR - message handler saw invalid JSON? " + err.name);
 						}
 					}
 				}
@@ -462,7 +462,7 @@
 						//TODO: send only after welcome
 						sendJson({type: "pong", msg_id: msgJson.msg_id});
 					}else if (msgJson.type == "welcome"){
-						activeOptions = msgJson.info? msgJson.info.options : {};
+						activeOptions = (msgJson.info? msgJson.info.options : {}) || {};
 						//overwrite custom settings
 						setLanguage(activeOptions.language || "", false);
 						setTask(activeOptions.task || "", false);
