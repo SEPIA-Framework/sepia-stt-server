@@ -99,6 +99,7 @@ class CoquiProcessor(EngineInterface):
 
     async def close(self):
         """Reset recognizer and remove"""
+        await self.on_before_close()
         #if self._recognizer:
             #self._recognizer.freeStream()   # this will throw an error if closed already
             #self._recognizer = None
