@@ -9,8 +9,10 @@ from launch_setup import settings
 from engine_interface import EngineInterface, ModelNotFound
 from text_processor import TextToNumberProcessor, DateAndTimeOptimizer
 
-# Vosk log level - -1: off, 0: normal, 1: more verbose
-if settings.log_level == "warning" or settings.log_level == "error":
+# Vosk log level - -1: less verbose, 0: normal, 1: more verbose
+if settings.log_level == "error":
+    SetLogLevel(-2)
+elif settings.log_level == "warning":
     SetLogLevel(-1)
 elif settings.log_level == "debug":
     SetLogLevel(1)
@@ -104,8 +106,9 @@ class VoskProcessor(EngineInterface):
 
     async def close(self):
         """Reset recognizer and remove"""
+        await self.on_before_close()
         #if self._recognizer:
-            #self._recognizer.Reset()   # this throws an error!? Maye because its closed already?
+            #self._recognizer.Reset()   # this throws an error!? Maybe because its closed already?
             #self._recognizer = None
 
     def get_options(self):
