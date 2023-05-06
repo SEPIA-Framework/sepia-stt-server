@@ -36,7 +36,7 @@ class EngineInterface():
         # -- model folder/file relative to: settings.asr_models_folder
         self._asr_model_path = ""
         # -- model parameters
-        self._asr_model_properties = []
+        self._asr_model_properties = {}
         # -- task (a way to load task specific models w/o knowing the name)
         self._asr_task = options.get("task", None)
         # -- send final result once after stop event
