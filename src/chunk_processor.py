@@ -9,10 +9,12 @@ from launch_setup import settings
 from socket_messages import (SocketJsonInputMessage, SocketResponseMessage, SocketErrorMessage)
 from engine_interface import EngineInterface, EngineNotFound
 # imports based on settings.asr_engine:
-if settings.hot_swap_engines or settings.asr_engine == "vosk":
+if "vosk" in settings.available_engines:
     from engine_vosk import VoskProcessor
-if settings.hot_swap_engines or settings.asr_engine == "coqui":
+if "coqui" in settings.available_engines:
     from engine_coqui import CoquiProcessor
+if "whisper" in settings.available_engines:
+    from engine_whisper import WhisperProcessor
 
 def get_processor_instance(engine_name = None, send_message = None, options = None):
     """Create a new processor instance for a certain engine"""
@@ -22,6 +24,9 @@ def get_processor_instance(engine_name = None, send_message = None, options = No
     # Coqui-STT
     elif engine_name == "coqui":
         return CoquiProcessor(send_message, options)
+    # Whisper
+    elif engine_name == "whisper":
+        return WhisperProcessor(send_message, options)
     # Dynamic selection at runtime
     elif engine_name == "dynamic":
         return DynamicEngineSwap(send_message, options)

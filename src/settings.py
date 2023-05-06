@@ -7,7 +7,7 @@ import configparser
 
 # Server constants
 SERVER_NAME = "SEPIA STT Server"
-SERVER_VERSION = "1.0.0"
+SERVER_VERSION = "1.1.0"
 
 # ordered from hight to low prio
 SETTINGS_PATHS = [
@@ -21,6 +21,7 @@ class SettingsError(Exception):
 class SettingsFile:
     """File handler for server settings (e.g. server.conf)"""
     def __init__(self, file_path = None):
+        # TODO: consider replacing with YAML or JSON
         # Read ONE single "best" settings file
         settings = configparser.ConfigParser()
         env_settings_path = os.getenv("SEPIA_STT_SETTINGS")
@@ -35,8 +36,8 @@ class SettingsFile:
             settings_read = settings.read(env_settings_path)
         else:
             # Check rest
-            path_checked = "".join('\n    {}'.format(sp) for sp in SETTINGS_PATHS)
             for settings_file in SETTINGS_PATHS:
+                path_checked += f"\n  {settings_file}"
                 if os.path.exists(settings_file):
                     settings_read = settings.read(settings_file)
                     break
@@ -75,8 +76,8 @@ class SettingsFile:
             self.asr_engine = settings.get("app", "asr_engine", fallback="dynamic")
             if self.asr_engine == "all":
                 self.asr_engine = "dynamic" # alias for 'dynamic'
-            self.hot_swap_engines = True if self.asr_engine == "dynamic" else False
-            self._available_engines = set({})   # keep track of all 'dynamic' engines in a set
+            self.hot_swap_engines = (self.asr_engine == "dynamic")
+            self.available_engines = set({})   # keep track of all 'dynamic' engines in a set
             self.asr_model_paths = []       # required: folder
             self.asr_model_languages = []   # required: language code 'ab-CD'
             self.asr_model_properties = []  # optional: engine, scorer, tasks, ...
@@ -117,7 +118,7 @@ class SettingsFile:
                         # prevent recursion when loading chunk processor
                         raise SettingsError("'engine=dynamic' is NOT ALLOWED as model property!")
                     else:
-                        self._available_engines.add(val)
+                        self.available_engines.add(val)
                         current_params["engine"] = val
                 elif key == f"{base_key}{model_index}":
                     current_params[base_key] = val
@@ -153,11 +154,10 @@ class SettingsFile:
             if name:
                 self.asr_model_names.append(name)
             elif "task" in params:
-                self.asr_model_names.append("{}:{}".format(
-                    path, params["task"]))
+                self.asr_model_names.append(f"{path}:{params['task']}")
             elif "scorer" in params:
-                self.asr_model_names.append("{}:{}".format(
-                    path, os.path.splitext(params["scorer"])[0]))
+                scorer_name = os.path.splitext(params['scorer'])[0]
+                self.asr_model_names.append(f"{path}:{scorer_name}")
             else:
                 self.asr_model_names.append(path)
             self.asr_model_paths.append(path)
@@ -182,6 +182,15 @@ class SettingsFile:
         # NOTE: typically used aliases: "words", "hotWords", "scorer"
         return features
 
+    def _get_whisper_features(self):
+        """Features available for Whisper engine"""
+        features = {"words_ts"}
+        features.add("beamsize")
+        features.add("init_prompt")
+        features.add("translate")
+        # NOTE: typically used aliases: "words", "prompt"
+        return features
+
     def get_settings_response(self):
         """Get (partially hard-coded) settings options for server info message"""
         features = set({})
@@ -191,16 +200,21 @@ class SettingsFile:
         # Coqui features
         elif self.asr_engine == "coqui":
             features.update(self._get_coqui_features())
+        # Whisper features
+        elif self.asr_engine == "whisper":
+            features.update(self._get_whisper_features())
         # Dynamic features
         elif self.asr_engine == "dynamic":
             # use dict instead
             features = {
                 "basic": "engine_hot_swap"
             }
-            if "vosk" in self._available_engines:
+            if "vosk" in self.available_engines:
                 features["vosk"] = list(self._get_vosk_features())
-            if "coqui" in self._available_engines:
+            if "coqui" in self.available_engines:
                 features["coqui"] = list(self._get_coqui_features())
+            if "whisper" in self.available_engines:
+                features["whisper"] = list(self._get_whisper_features())
             # NOTE: individual engine features should be checked via welcome event
         # Debugging
         elif self.asr_engine == "wave_file_writer":
