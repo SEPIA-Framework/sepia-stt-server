@@ -74,6 +74,20 @@ def get_or_create_model(
         return cached_model
 
 
+class WhisperResult():
+    """Result of Whisper encoder + decoder"""
+    def __init__(self,
+            text: List[str],
+            text_conf: List[float],
+            words: List[dict],
+            duration_s: float
+        ):
+        self.text: List[str] = text
+        self.text_conf: List[float] = text_conf
+        self.words: List[dict] = words
+        self.duration_s = duration_s
+
+
 class WhisperProcessor(EngineInterface):
     """Process chunks with Whisper (faster-whisper)"""
 
@@ -120,6 +134,7 @@ class WhisperProcessor(EngineInterface):
         self._final_result = {}
         # states - 0: waiting for input, 1: tbd, 2: got final result, 3: closing
         self._state = 0
+        self._is_processing = False
 
         self._chunk_buffer: np.ndarray[np.float32] = None
         self._samples_per_sec_fp32 = self._sample_rate
@@ -128,9 +143,8 @@ class WhisperProcessor(EngineInterface):
         self._last_buffer_split_at: int = 0
 
         self._max_duration_s = 30
-        self._is_processing = False
         self._measured_rtf = 0
-        self._rtf_exceeded_thresh_n = 0
+        self._process_queue_size = 0
 
         # 3-step dynamic min-silence to optimize long audio split (for continuous mode)
         self._dynamic_min_silence_ms = [1750, 1000, 500]
@@ -141,6 +155,7 @@ class WhisperProcessor(EngineInterface):
         if self._state == 3:
             pass
         try:
+            # collect chunks
             self._chunk_total_int16 += len(chunk)
             if self._chunk_buffer is None:
                 self._chunk_buffer = WhisperProcessor.int16_to_float32_ndarray(chunk)
@@ -149,8 +164,13 @@ class WhisperProcessor(EngineInterface):
                     (self._chunk_buffer, WhisperProcessor.int16_to_float32_ndarray(chunk)),
                     axis=0
                 )
+            # check if processor is blocked
+            if self._is_processing:
+                self._process_queue_size += 1
+                logger.warning("WhisperProcessor - "
+                    + f"Inference is slow! Last RTF: {self._measured_rtf:.2f}")
             # VAD processing
-            if self._chunk_buffer.size >= self._min_buffer_size_fp32:
+            elif self._chunk_buffer.size >= self._min_buffer_size_fp32:
                 await self._process_with_vad()
 
         except OSError:
@@ -203,7 +223,47 @@ class WhisperProcessor(EngineInterface):
             features=features,
             alternatives=alternatives)
 
-    async def _handle_final_result(self, segments, info, skip_send = False):
+    def _process_result(self, segments, info):
+        """Process all segments. Optionally runs encoder first then decodes tokens."""
+        # check inference speed
+        if self._continuous_mode and self._process_queue_size >= 3:
+            # queue is too large now
+            logger.exception("WhisperProcessor - "
+                + f"Inference is too slow for continuous mode! Last RTF: {self._measured_rtf:.2f}")
+            self.on_error("Engine: whisper - Message: Inference is too slow for continuous mode.")
+            raise RuntimeError("Whisper inference is too slow for continuous mode!")
+        text: List[str] = []
+        text_conf: List[float] = []
+        words: List[dict] = None
+        if segments is not None:
+            for segment in segments:
+                #print("segmnet", segment)  # DEBUG
+                # TODO: fix time offsets for continuous mode
+                if self._return_words:
+                    for word in segment.words:
+                        # word: start, end, word, probability
+                        #print(f"{word.word} (conf.: {word.probability:.2fs})")  # DEBUG
+                        words.append({
+                            "start": word.start,
+                            "end": word.end,
+                            "word": word.word,
+                            "confidence": word.probability
+                        })
+                else:
+                    # segment: id, seek, start, end, text, tokens, temperature
+                    #   avg_logprob, compression_ratio, no_speech_prob, words
+                    #print(f"{segment.text}")  # DEBUG
+                    if not segment.no_speech_prob or segment.no_speech_prob < 0.7:
+                        text.append(segment.text.strip())
+                        text_conf.append(segment.avg_logprob)
+        return WhisperResult(
+            text=text,
+            text_conf=text_conf,
+            words=words,
+            duration_s=info.duration
+        )
+
+    async def _handle_final_result(self, whisp_res: WhisperResult, skip_send = False):
         """Handle a final result"""
         #result = {
         #    "text": text,
@@ -216,48 +276,18 @@ class WhisperProcessor(EngineInterface):
         #      "confidence": 0.90
         #    }, ...]
         #}
-        if self._continuous_mode and self._rtf_exceeded_thresh_n > 3:
-            logger.exception("WhisperProcessor - "
-                + f"Inference is too slow for continuous mode! Last RTF: {self._measured_rtf:.2f}")
-            self.on_error("Engine: whisper - Message: Inference is too slow for continuous mode.")
-            raise RuntimeError("Whisper inference is too slow for continuous mode!")
-        self._final_result = {}
-        text: List[str] = []
-        text_conf: List[float] = []
-        words: List[dict] = None
-        if segments is not None:
-            for segment in segments:
-                #print("segmnet", segment)  # DEBUG
-                if self._return_words:
-                    for word in segment.words:
-                        # word: start, end, word, probability
-                        #print(f"{word.word} (conf.: {word.probability:.2fs})")  # DEBUG
-                        words.append({
-                            "start": word.start,
-                            "end": word.end,
-                            "word": word.word,
-                            "confidence": word.probability
-                        })
-                        # TODO: add time offsets for continuous mode
-                else:
-                    # segment: id, seek, start, end, text, tokens, temperature
-                    #   avg_logprob, compression_ratio, no_speech_prob, words
-                    #print(f"{segment.text}")  # DEBUG
-                    if not segment.no_speech_prob or segment.no_speech_prob < 0.7:
-                        text.append(segment.text.strip())
-                        text_conf.append(segment.avg_logprob)
-                        # TODO: add times and offsets for continuous mode
         has_data = False
-        if text:
-            self._final_result["text"] = " ".join(text)
+        if whisp_res.text:
+            self._final_result["text"] = " ".join(whisp_res.text)
             # confidence: naive average of logprobs (TODO: improve):
-            self._final_result["confidence"] = sum(text_conf)/len(text_conf)
+            avg_text_conf_naive = sum(whisp_res.text_conf)/len(whisp_res.text_conf)
+            self._final_result["confidence"] = avg_text_conf_naive
             has_data = True
-        if words:
-            self._final_result["words"] = words
+        if whisp_res.words:
+            self._final_result["words"] = whisp_res.words
             has_data = True
         if has_data:
-            self._final_result["duration"] = info.duration
+            self._final_result["duration"] = whisp_res.duration_s
             if not skip_send:
                 await self._send(self._final_result, True)
 
@@ -269,6 +299,7 @@ class WhisperProcessor(EngineInterface):
             #print(f"processing {audio_length_s:.2f}s of audio")
             self._is_processing = True
             inference_start = timer()
+            # mel-spectrum and optionally encoding
             segments, info = self._model.model.transcribe(
                 process_chunks,
                 beam_size=int(self._beamsize),
@@ -279,15 +310,14 @@ class WhisperProcessor(EngineInterface):
                 temperature=0,  # TODO: temporary fix for "Segmentation fault"
                 vad_filter=False
             )
+            # encoding (if None) and finally decoding
+            whisper_res: WhisperResult = self._process_result(segments, info)
+            # ready
             self._is_processing = False
             inference_time = timer() - inference_start
             self._measured_rtf = inference_time/info.duration
-            if self._continuous_mode and self._measured_rtf > 1.0:
-                self._rtf_exceeded_thresh_n += 1
-                logger.warning("WhisperProcessor - "
-                    + f"Inference is slow! RTF: {self._measured_rtf:.2f}")
             self._state = 0
-            await self._handle_final_result(segments, info)
+            await self._handle_final_result(whisper_res)
         else:
             self._state = 0
 
@@ -335,10 +365,16 @@ class WhisperProcessor(EngineInterface):
         #print(f"len chunks: {self._chunk_buffer.size}")   # DEBUG
         duration_s = self._chunk_buffer.size / self._samples_per_sec_fp32
         speech_ts = self._get_vad_result(duration_s)
-        #if duration_s > self._max_duration_s:
-        # TODO: use?
+        if duration_s > self._max_duration_s:
+            # force buffer clean-up
+            start_chunk_i = 0
+            end_chunk_i = self._chunk_buffer.size
+            await self._split_chunks_and_process(start_chunk_i, end_chunk_i)
+            logger.warning("WhisperProcessor - Reached max length for "
+                + f"single segment: {self._max_duration_s}s")
+            # TODO: can we fix transition to next chunk by context transfer?
         # Do we have more than one speech block?
-        if len(speech_ts) > 1:
+        elif len(speech_ts) > 1:
             # take everything from 0-start to n-1 end
             start_chunk_i = speech_ts[0]["start"]
             end_chunk_i = speech_ts[-1]["end"]
@@ -374,7 +410,6 @@ class WhisperProcessor(EngineInterface):
         if self._chunk_buffer is not None:
             self._chunk_buffer = None
         self._is_processing = False
-        # TODO: more?
 
     # ---- Helper functions ----
 
