@@ -1,6 +1,14 @@
 # Changelog for SEPIA Speech-To-Text Server
 
-## v1.0.0 - xx.xx.xxxx
+## v1.1.0 - xx.xx.xxxx
+
+- Added support for Whisper via faster-whisper CTranslate2 project by Guillaume Klein
+- New setup.py and cleaned-up install process
+- Updated dependencies for server, Vosk (v0.3.45) and Coqui-STT (v1.4.0)
+- Tweaked HTML/JS demos
+- Smaller fixes
+
+## v1.0.0 - 04.07.2022
 
 - Added support for Coqui-STT and fully implemented hot-swapping of engines (currently: Vosk + Coqui)
 - Added new config file properties for models: 'engine', 'task', 'scorer', 'name'
