@@ -294,6 +294,10 @@
 					if (!isRecording && !isWaitingForFinalResult) return;	//TODO: ignore unplanned results - use?
 					if (data.isFinal){
 						addMessage("Speech Recognition - Event: result (final) - " + data.transcript);
+						if (data.features && data.features.words && data.features.words.length){
+							addMessage("Speech Recognition - Feature: Words - [" 
+								+ data.features.words.map(w => w.start + ": " + w.word).join(", ") + "]");
+						}
 						if (isWaitingForFinalResult && !isRecording){
 							clearTimeout(waitingForFinalResultTimer);
 							setMicState("idle");
