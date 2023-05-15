@@ -21,9 +21,14 @@ def get_long_description():
 def req_file(filename):
     """Load requirements from txt files."""
     req_file_path = os.path.join(base_dir, filename)
-    with open(req_file_path, encoding="utf-8") as fh:
-        content = fh.readlines()
-    return [x.split("#")[0].strip() for x in content]
+    lines = []
+    with open(req_file_path, encoding="utf-8") as file_handler:
+        content = file_handler.readlines()
+        for line in content:
+            if line.startswith("#") or line.startswith("-"):
+                continue
+            lines.append(line.split("#")[0].strip())
+    return lines
 
 
 install_requires = req_file("requirements_server.txt")
@@ -66,7 +71,7 @@ setup(
     python_requires=">=3.6",
     install_requires=install_requires,
     # install extras via:
-    # $ pip install -e ".[core]"
+    # $ pip install -e .[all]
     # $ pip install sepia-stt-server[core]
     extras_require=extras_require,
 )
