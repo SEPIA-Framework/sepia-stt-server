@@ -37,8 +37,8 @@ class WhisperCachedModel:
 
 # global session and model tracking
 CACHED_MODELS: List[WhisperCachedModel] = []
-MAX_CACHE_SIZE: int = 2  # TODO: add as settings option
-THREADS_PER_MODEL: int = 2  # TODO: add as settings option
+MAX_CACHE_SIZE: int = settings.whisper_model_cache_size
+THREADS_PER_MODEL: int = settings.whisper_threads_per_model
 
 def get_or_create_model(
         model_path: str,
@@ -234,26 +234,26 @@ class WhisperProcessor(EngineInterface):
             raise RuntimeError("Whisper inference is too slow for continuous mode!")
         text: List[str] = []
         text_conf: List[float] = []
-        words: List[dict] = None
+        words: List[dict] = []
         if segments is not None:
             for segment in segments:
                 #print("segmnet", segment)  # DEBUG
-                # TODO: fix time offsets for continuous mode
-                if self._return_words:
-                    for word in segment.words:
-                        # word: start, end, word, probability
-                        #print(f"{word.word} (conf.: {word.probability:.2fs})")  # DEBUG
-                        words.append({
-                            "start": word.start,
-                            "end": word.end,
-                            "word": word.word,
-                            "confidence": word.probability
-                        })
-                else:
-                    # segment: id, seek, start, end, text, tokens, temperature
-                    #   avg_logprob, compression_ratio, no_speech_prob, words
-                    #print(f"{segment.text}")  # DEBUG
-                    if not segment.no_speech_prob or segment.no_speech_prob < 0.7:
+                if not segment.no_speech_prob or segment.no_speech_prob < 0.7:
+                    # TODO: fix time offsets for continuous mode
+                    if self._return_words:
+                        for word in segment.words:
+                            # word: start, end, word, probability
+                            #print(f"{word.word} (conf.: {word.probability:.2fs})")  # DEBUG
+                            words.append({
+                                "start": word.start,
+                                "end": word.end,
+                                "word": word.word,
+                                "confidence": word.probability
+                            })
+                    if segment.text:
+                        # segment: id, seek, start, end, text, tokens, temperature
+                        #   avg_logprob, compression_ratio, no_speech_prob, words
+                        #print(f"{segment.text}")  # DEBUG
                         text.append(segment.text.strip())
                         text_conf.append(segment.avg_logprob)
         return WhisperResult(
@@ -316,6 +316,7 @@ class WhisperProcessor(EngineInterface):
             self._is_processing = False
             inference_time = timer() - inference_start
             self._measured_rtf = inference_time/info.duration
+            #print(f"inference time: {inference_time:.2f}s - RTF: {self._measured_rtf}")
             self._state = 0
             await self._handle_final_result(whisper_res)
         else:

@@ -83,9 +83,15 @@ class SettingsFile:
             self.asr_model_properties = []  # optional: engine, scorer, tasks, ...
             self.asr_models_folder = settings.get("asr_models", "base_folder")
             self.asr_model_names = []  # build from path + optional (task|scorer) to distinguish
+            # Engine-specific settings
+            # -- Whisper:
+            self.whisper_model_cache_size = int(
+                settings.get("whisper", "model_cache_size", fallback="2"))
+            self.whisper_threads_per_model = int(
+                settings.get("whisper", "threads_per_model", fallback="2"))
             # Load all model parameters for each model 1...N and filter by engine
-            model_index = 1
             num_section_items = len(settings.items("asr_models"))
+            model_index = 1
             current_path = ""
             current_lang = ""
             current_name = ""
