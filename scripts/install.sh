@@ -3,6 +3,32 @@ set -e
 # paths
 SCRIPT_PATH="$(realpath "$BASH_SOURCE")"
 SCRIPT_FOLDER="$(dirname "$SCRIPT_PATH")"
+# platform and Python
+PLATFORM=""
+if [ -n "$(uname -m | grep aarch64)" ]; then
+	PLATFORM=aarch64
+elif [ -n "$(uname -m | grep armv7l)" ]; then
+	PLATFORM=armv7l
+elif [ -n "$(uname -m | grep x86_64)" ]; then
+	PLATFORM=amd64
+elif [ -n "$(uname -m | grep armv6l)" ]; then
+	echo "Platform: armv6l - NOT SUPPORTED"
+	exit 1
+else
+	echo "Platform: x86_32 - NOT SUPPORTED"
+	exit 1
+fi
+echo "Platform: $PLATFORM"
+PYTHON_39=$(python3 --version | grep "3.9" | wc -l)
+PYTHON_37=$(python3 --version | grep "3.7" | wc -l)
+if (( PYTHON_39 == 1 )); then
+	echo "Good: Python 3.9 is the recommended version :-)."
+elif (( PYTHON_37 == 1 )); then
+	echo "NOTE: Python 3.7 should work, but the recommended version is 3.9."
+else
+	echo "NOTE: $(python3 --version) support might be limited. Recommended: 3.9."
+fi
+echo ""
 # skip confirm question?
 install_path="$SCRIPT_FOLDER"
 code_branch="master"
@@ -26,7 +52,7 @@ if [ -z "$setup_type" ] || [ "$setup_type" = "1" ]; then
 elif [ "$setup_type" = "2" ]; then
 	asr_engine="vosk"
 else
-	echo "Unknown setup ID: ABORT"
+	echo "Unknown setup type ID - ABORT"
 	exit 1
 fi
 if [ "$autoconfirm" = "0" ]; then
@@ -39,7 +65,7 @@ if [ "$autoconfirm" = "0" ]; then
 	echo "Setup (s):"
 	if [ "$asr_engine" = "dynamic" ]; then
 		echo "- Engine: Dynamic (all)"
-		echo "- Models: Vosk small (en, de), Coqui test (en)"
+		echo "- Models: Vosk small (en, de), Coqui test (en), Whisper tiny"
 	elif [ "$asr_engine" = "vosk" ]; then
 		echo "- Engine: Vosk (only)"
 		echo "- Models: Vosk small (en, de)"
@@ -80,21 +106,6 @@ mv sepia-stt-server/scripts/status.sh ./
 rm -rf sepia-stt-server
 echo ""
 echo "Installing Python server requirements ..."
-PLATFORM=""
-if [ -n "$(uname -m | grep aarch64)" ]; then
-	PLATFORM=aarch64
-elif [ -n "$(uname -m | grep armv7l)" ]; then
-	PLATFORM=armv7l
-elif [ -n "$(uname -m | grep x86_64)" ]; then
-	PLATFORM=amd64
-elif [ -n "$(uname -m | grep armv6l)" ]; then
-	echo "Platform: armv6l - NOT SUPPORTED"
-	exit 1
-else
-	echo "Platform: x86_32 - NOT SUPPORTED"
-	exit 1
-fi
-echo "Platform: $PLATFORM"
 mkdir -p models
 mkdir -p downloads
 # Virtual env?
@@ -114,25 +125,37 @@ pip3 install -r requirements_server.txt
 if [ "$asr_engine" = "dynamic" ] || [ "$asr_engine" = "vosk" ]; then
 	echo ""
 	echo "Installing Vosk requirements ..."
-	#currently aarch64 files are missing on PyPI
-	#pip3 install -r requirements_vosk.txt
-	vosk_wheel=""
-	if [ "$PLATFORM" = "aarch64" ]; then
-		vosk_wheel="vosk-0.3.42-py3-none-linux_aarch64.whl"
-	elif [ "$PLATFORM" = "armv7l" ]; then
-		vosk_wheel="vosk-0.3.42-py3-none-linux_armv7l.whl"
-	else
-		vosk_wheel="vosk-0.3.42-py3-none-linux_x86_64.whl"
-	fi
-	wget https://github.com/SEPIA-Framework/sepia-stt-server/releases/download/v1.0.0/$vosk_wheel
-	pip3 install $vosk_wheel
-	rm $vosk_wheel
+	pip3 install -r requirements_vosk.txt
+fi
+# Whisper engine
+if [ "$asr_engine" = "dynamic" ] || [ "$asr_engine" = "whisper" ]; then
+	echo ""
+	echo "Installing Whisper requirements ..."
+	pip3 install -r requirements_whisper.txt
 fi
 # Coqui engine
 if [ "$asr_engine" = "dynamic" ] || [ "$asr_engine" = "coqui" ]; then
 	echo ""
 	echo "Installing Coqui requirements ..."
-	pip3 install -r requirements_coqui.txt
+	if [ "$PLATFORM" = "aarch64" ]; then
+		echo "Loading aarch64 wheels manually:"
+		# TODO: update when PyPi files are available
+		if (( PYTHON_39 == 1 )); then
+			pip3 install https://github.com/coqui-ai/STT/releases/download/v1.4.0/stt-1.4.0-cp39-cp39-linux_aarch64.whl
+		elif (( PYTHON_37 == 1 )); then
+			pip3 install https://github.com/coqui-ai/STT/releases/download/v1.4.0/stt-1.4.0-cp37-cp37m-linux_aarch64.whl
+		fi
+	elif [ "$PLATFORM" = "armv7l" ]; then
+		echo "Loading arm32 wheels manually:"
+		# TODO: update when PyPi files are available
+		if (( PYTHON_39 == 1 )); then
+			pip3 install https://github.com/coqui-ai/STT/releases/download/v1.4.0/stt-1.4.0-cp39-cp39-linux_armv7l.whl
+		elif (( PYTHON_37 == 1 )); then
+			pip3 install https://github.com/coqui-ai/STT/releases/download/v1.4.0/stt-1.4.0-cp37-cp37m-linux_armv7l.whl
+		fi
+	else
+		pip3 install -r requirements_coqui.txt
+	fi
 fi
 cd ..
 cd downloads
@@ -147,6 +170,18 @@ if [ "$asr_engine" = "dynamic" ] || [ "$asr_engine" = "vosk" ]; then
 	unzip vosk-model-small-de-0.15.zip && mv vosk-model-small-de-0.15 ../models/vosk-model-small-de
 	unzip vosk-model-spk-0.4.zip && mv vosk-model-spk-0.4 ../models/vosk-model-spk
 fi
+# Whisper models
+if [ "$asr_engine" = "dynamic" ] || [ "$asr_engine" = "whisper" ]; then
+	echo ""
+	echo "Downloading Whisper models ..."
+	wget https://github.com/fquirin/speech-recognition-experiments/releases/download/v1.0.0/whisper-tiny-ct2.zip
+	unzip whisper-tiny-ct2.zip && mv whisper-tiny-ct2 ../models/whisper-tiny-ct2-int8
+	if [ "$asr_engine" = "whisper" ]; then
+		# get the small one as well if we only have whisper :-)
+		wget https://github.com/fquirin/speech-recognition-experiments/releases/download/v1.0.0/whisper-small-ct2.zip
+		unzip whisper-small-ct2.zip && mv whisper-small-ct2 ../models/whisper-small-ct2-int8
+	fi
+fi
 # Coqui models
 if [ "$asr_engine" = "dynamic" ] || [ "$asr_engine" = "coqui" ]; then
 	echo ""
@@ -158,9 +193,19 @@ cd ..
 # Replace server config?
 if [ "$asr_engine" = "vosk" ]; then
 	echo ""
-	echo "Adapting 'server.conf' file ..."
+	echo "Setting default 'server.conf' to: Vosk"
 	mv server/server.conf server/server-dynamic.conf
 	mv server/server-vosk.conf server/server.conf
+elif [ "$asr_engine" = "whisper" ]; then
+	echo ""
+	echo "Setting default 'server.conf' to: Whisper"
+	mv server/server.conf server/server-dynamic.conf
+	mv server/server-vosk.conf server/server.conf
+elif [ "$asr_engine" = "coqui" ]; then
+	echo ""
+	echo "Setting default 'server.conf' to: Coqui"
+	mv server/server.conf server/server-dynamic.conf
+	mv server/server-coqui.conf server/server.conf
 fi
 # LM Adapt scripts
 if [ -z "$skip_adapt_scripts" ]; then
