@@ -34,19 +34,25 @@ class WhisperCachedModel:
         self.model = model
         self.path = path
         self.in_use: bool = False
+        self.last_use: float = 0.0
 
 # global session and model tracking
 CACHED_MODELS: List[WhisperCachedModel] = []
 MAX_CACHE_SIZE: int = settings.whisper_model_cache_size
+MIN_CACHE_EXPIRE_TIME_S: int = settings.whisper_cache_expire_time_s
 THREADS_PER_MODEL: int = settings.whisper_threads_per_model
 
 def get_or_create_model(
         model_path: str,
-        model_properties: dict = {},
-        options: dict = {}
+        model_properties: dict,
+        options: dict
     ):
     """Get model from cache or create a new one
     if there is space left"""
+    if model_properties is None:
+        model_properties = {}
+    if options is None:
+        options = {}
     full_model_path = settings.asr_models_folder + model_path
     # Make sure paths exist and check global cache
     if not os.path.exists(full_model_path):
@@ -56,19 +62,33 @@ def get_or_create_model(
     if not cached_model:
         # not cached (yet)
         if len(CACHED_MODELS) >= MAX_CACHE_SIZE:
-            raise RuntimeError("Too many active Whisper models! Exceeded cache size.")
-        else:
-            compute_device = model_properties.get("compute_device", "cpu")
-            compute_type = model_properties.get("compute_type", "int8")
-            new_model = WhisperModel(
-                full_model_path,
-                device = compute_device,
-                compute_type = compute_type,
-                cpu_threads = THREADS_PER_MODEL
-            )
-            cached_model = WhisperCachedModel(new_model, model_path)
-            CACHED_MODELS.append(cached_model)
-            return cached_model
+            # get oldest model not in use
+            oldest_use = timer()
+            oldest_model_not_in_use = None
+            for model in CACHED_MODELS:
+                if not model.in_use and model.last_use < oldest_use:
+                    oldest_use = model.last_use
+                    oldest_model_not_in_use = model
+            if oldest_model_not_in_use and (timer() - oldest_use) > MIN_CACHE_EXPIRE_TIME_S:
+                # remove oldest model from cache
+                CACHED_MODELS.remove(oldest_model_not_in_use)
+                #print(f"Removed Whisper model from cache: {model.path}")
+            else:
+                # we have no space left
+                raise RuntimeError("Too many active Whisper models! Exceeded cache size.")
+        # create new one
+        compute_device = model_properties.get("compute_device", "cpu")
+        compute_type = model_properties.get("compute_type", "int8")
+        new_model = WhisperModel(
+            full_model_path,
+            device = compute_device,
+            compute_type = compute_type,
+            cpu_threads = THREADS_PER_MODEL
+        )
+        cached_model = WhisperCachedModel(new_model, model_path)
+        cached_model.last_use = timer()
+        CACHED_MODELS.append(cached_model)
+        return cached_model
     else:
         # found in cache
         return cached_model

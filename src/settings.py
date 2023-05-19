@@ -87,6 +87,8 @@ class SettingsFile:
             # -- Whisper:
             self.whisper_model_cache_size = int(
                 settings.get("whisper", "model_cache_size", fallback="2"))
+            self.whisper_cache_expire_time_s = int(
+                settings.get("whisper", "cache_expire_time_s", fallback="120"))
             self.whisper_threads_per_model = int(
                 settings.get("whisper", "threads_per_model", fallback="2"))
             # Load all model parameters for each model 1...N and filter by engine
