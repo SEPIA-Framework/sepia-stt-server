@@ -211,7 +211,7 @@ class German(Language):
             if not found:
                 # is (large) ordinal ending?
                 ord_match = None
-                if len(result) > 3 and text.startswith("ste"):
+                if not invalid_word and len(result) > 3 and text.startswith("ste"):
                     ord_match = re.search(self.LARGE_ORDINAL_SUFFIXES_GER, text)
 
                 if ord_match:
