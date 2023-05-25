@@ -1,2 +1,2 @@
-tornado==4.4.2
+tornado==6.3.2
 webrtcvad==2.0.10
