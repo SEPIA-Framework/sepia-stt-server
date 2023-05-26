@@ -100,6 +100,8 @@ class WordStreamValueParser(WordStreamValueParserInterface):
             and self.grp_val < 20
         ):
             expected = word in self.lang.HUNDRED
+        elif self.last_word in self.lang.MHUNDREDS:
+            expected = True
         elif self.last_word in self.lang.MTENS:
             expected = (
                 word in self.lang.UNITS
@@ -114,8 +116,11 @@ class WordStreamValueParser(WordStreamValueParserInterface):
         return expected
 
     def is_coef_appliable(self, coef: int) -> bool:
+        if self.lang.simplify_check_coef_appliable:
+            return coef != self.value
+
         """Is this multiplier expected?"""
-        if coef > self.value and (self.value > 0 or coef == 1000):
+        if coef > self.value and (self.value > 0 or coef >= 1000):
             # a multiplier can be applied to anything lesser than itself,
             # as long as it not zero (special case for 1000 which then implies 1)
             return True
@@ -194,6 +199,8 @@ class WordStreamValueParser(WordStreamValueParserInterface):
                 self.grp_val = (
                     100 * self.grp_val if self.grp_val else self.lang.HUNDRED[word]
                 )
+            elif word in self.lang.MHUNDREDS:
+                self.grp_val = self.lang.MHUNDREDS[word]
             else:
                 self.grp_val += self.lang.NUMBERS[word]
         else:
@@ -648,9 +655,17 @@ class WordToDigitParser:
                 look_ahead is None
                 or look_ahead in self.lang.NUMBERS
                 or look_ahead in self.lang.ZERO
+                or look_ahead in self.lang.DECIMAL_SEP
             )
         ):
             self._value.append("0")
+        elif (
+            word in self.lang.ZERO
+            and self.at_start_of_seq()
+            and look_ahead is not None
+            and look_ahead in self.lang.DECIMAL_SEP
+        ):
+            pass
         elif self._push(self.lang.ord2card(word) or "", look_ahead):
             self._value.append(
                 self.lang.num_ord(
@@ -666,11 +681,12 @@ class WordToDigitParser:
             )
             self.closed = True
         elif (
-            word == self.lang.DECIMAL_SEP
+            (word == self.lang.DECIMAL_SEP or word in self.lang.DECIMAL_SEP.split(','))
             and (look_ahead in self.lang.NUMBERS or look_ahead in self.lang.ZERO)
             and not self.in_frac
         ):
-            self._value.append(str(self.int_builder.value))
+            if not self.value:
+                self._value.append(str(self.int_builder.value))
             self._value.append(self.lang.DECIMAL_SYM)
             self.in_frac = True
         elif not self._push(word, look_ahead):

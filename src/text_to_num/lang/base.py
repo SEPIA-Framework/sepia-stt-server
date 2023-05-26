@@ -36,6 +36,7 @@ class Language:
     MTENS: Dict[str, int]
     MTENS_WSTENS: Set[str]
     HUNDRED: Dict[str, int]
+    MHUNDREDS: Dict[str, int] = {}
     NUMBERS: Dict[str, int]
 
     SIGN: Dict[str, str]
@@ -50,6 +51,8 @@ class Language:
     # Relaxed composed numbers (two-words only)
     # start => (next, target)
     RELAXED: Dict[str, Tuple[str, str]]
+
+    simplify_check_coef_appliable: bool = False
 
     def ord2card(self, word: str) -> Optional[str]:
         """Convert ordinal number to cardinal.

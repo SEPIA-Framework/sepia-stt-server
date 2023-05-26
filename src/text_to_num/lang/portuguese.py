@@ -33,12 +33,21 @@ from .base import Language
 # Those words multiplies lesser numbers (see Rules)
 # Exception: "(de) milliards" that can multiply bigger numbers ("milliards de milliards")
 MULTIPLIERS = {
-    "mil": 1000,
-    "milhar": 1000,
-    "milhares": 1000,
-    "milhão": 1000000,
-    "milhao": 1000000,
-    "milhões": 1000000,
+    "mil": 10 ** 3,
+    "milhar": 10 ** 3,
+    "milhares": 10 ** 3,
+    "milhao": 10 ** 6,
+    "milhão": 10 ** 6,
+    "milhoes": 10 ** 6,
+    "milhões": 10 ** 6,
+    "bilhao": 10 ** 9,
+    "bilhão": 10 ** 9,
+    "bilhoes": 10 ** 9,
+    "bilhões": 10 ** 9,
+    "trilhao": 10 ** 12,
+    "trilhão": 10 ** 12,
+    "trilhoes": 10 ** 12,
+    "trilhões": 10 ** 12,
 }
 
 
@@ -52,6 +61,7 @@ UNITS: Dict[str, int] = {
 # Unit variants
 UNITS["uma"] = 1
 UNITS["duas"] = 2
+UNITS["tres"] = 3
 
 # Single tens are terminals (see Rules)
 # exact find
@@ -62,6 +72,12 @@ STENS: Dict[str, int] = {
         10,
     )
 }
+
+# Stens variants
+UNITS["catorze"] = 14
+UNITS["dezesseis"] = 16
+UNITS["dezessete"] = 17
+UNITS["dezenove"] = 19
 
 # Ten multiples
 # Ten multiples may be followed by a unit only;
@@ -136,6 +152,7 @@ class Portuguese(Language):
         "duas",
         "dois",
         "três",
+        "tres",
         "quatro",
         "cinco",
         "seis",
@@ -147,11 +164,15 @@ class Portuguese(Language):
         "doze",
         "treze",
         "quatorze",
+        "catorze",
         "quinze",
         "dezasseis",
+        "dezesseis",
         "dezassete",
+        "dezessete",
         "dezoito",
         "dezanove",
+        "dezenove",
         "vinte",
         "trinta",
         "quarenta",

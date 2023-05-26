@@ -49,6 +49,7 @@ UNITS: Dict[str, int] = {
 }
 # Unit variants
 UNITS["un"] = 1
+UNITS["una"] = 1
 
 # Single tens are terminals (see Rules)
 STENS: Dict[str, int] = {
@@ -60,6 +61,10 @@ STENS: Dict[str, int] = {
         10,
     )
 }
+
+STENS["veintitrés"] = 23
+STENS["veintidós"] = 22
+
 
 # Ten multiples
 # Ten multiples may be followed by a unit only;
@@ -77,6 +82,7 @@ MTENS_WSTENS: Set[str] = set()
 HUNDRED = {
     "cien": 100,
     "ciento": 100,
+    "cienta": 100,
     "doscientos": 200,
     "trescientos": 300,
     "cuatrocientos": 400,
@@ -85,6 +91,15 @@ HUNDRED = {
     "setecientos": 700,
     "ochocientos": 800,
     "novecientos": 900,
+    #
+    "doscientas": 200,
+    "trescientas": 300,
+    "cuatrocientas": 400,
+    "quinientas": 500,
+    "seiscientas": 600,
+    "setecientas": 700,
+    "ochocientas": 800,
+    "novecientas": 900,
 }
 
 COMPOSITES: Dict[str, int] = {}
@@ -117,6 +132,7 @@ class Spanish(Language):
     AND_NUMS = {
         "un",
         "uno",
+        "una",
         "dos",
         "tres",
         "cuatro",
@@ -127,7 +143,7 @@ class Spanish(Language):
         "nueve",
     }
     AND = "y"
-    NEVER_IF_ALONE = {"un", "uno"}
+    NEVER_IF_ALONE = {"un", "uno", "una"}
 
     # Relaxed composed numbers (two-words only)
     # start => (next, target)
