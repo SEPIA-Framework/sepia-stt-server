@@ -261,7 +261,7 @@ function constructWorker(options){
 				}
 				//if result is final and gate is closed -> close connection
 				if (res.isFinal && !gateIsOpen && sttServer && sttServer.connectionIsOpen){
-					sttServer.closeConnection();
+					sttServer.closeConnection(1000, "final_result");
 				}
 			},
 			onError: function(err){ 
@@ -569,7 +569,7 @@ function stop(options){
 function reset(options){
 	//clean up connection
 	if (sttServer && sttServer.connectionIsOpen){
-		sttServer.closeConnection();
+		sttServer.closeConnection(1000, "reset");
 		//NOTE: we try to reuse this instance
 	}
     //clean up worker
@@ -579,7 +579,7 @@ function reset(options){
 function release(options){
 	//this is expected to happen after final result (or abort) so: clean up connection
 	if (sttServer && sttServer.connectionIsOpen){
-		sttServer.closeConnection();
+		sttServer.closeConnection(1000, "release");
 	}
 	//clean up worker and close
 	_lookbackRingBuffer = null;

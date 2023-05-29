@@ -159,7 +159,7 @@ class SepiaSttSocketClient {
 					self.handleSocketMessage(JSON.parse(event.data));
 				}catch(err){
 					console.error("SepiaSttSocketClient - MessageParserError", err);
-					self.handleSocketError({name: "SocketMessageParserError", message: "Message handler saw invlaid JSON?!"});
+					self.handleSocketError({name: "SocketMessageParserError", message: "Message handler saw invalid JSON?!"});
 				}
 			}
 		}
@@ -176,9 +176,10 @@ class SepiaSttSocketClient {
 		return true;
 	}
 
-	closeConnection(){
+	closeConnection(code, reason){
 		if (this.websocket && this.websocket.readyState == this.websocket.OPEN){
-			this.websocket.close();
+			this.websocket.close(code, reason);
+			this.connectionIsOpen = false;	//NOTE: we set this right away because 'onclose' can be delayed!?
 			return true;
 		}else{
 			//fail silently?
@@ -210,7 +211,7 @@ class SepiaSttSocketClient {
 				this._onResult(msgJson);
 				if (msgJson.isFinal && !this.activeOptions.continuous && this.autoCloseOnLastFinal){
 					//after final result, close connection
-					this.closeConnection();
+					this.closeConnection(1000, "auto_close_final");
 				}
 			}else if (msgJson.type == "response"){
 				//anything?
@@ -226,7 +227,7 @@ class SepiaSttSocketClient {
 		//send
 		this._onError(error);
 		//Errors are not acceptable :-p - close in any case
-		this.closeConnection();		//this has probably no effect at all
+		this.closeConnection(1000, "internal_error");		//this has probably no effect at all
 	}
 
 	sendJson(json){
