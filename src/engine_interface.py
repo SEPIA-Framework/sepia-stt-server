@@ -72,7 +72,7 @@ class EngineInterface():
                 # Find first model that fits language and task
                 for index, prop in enumerate(settings.asr_model_properties):
                     if settings.asr_model_languages[index] == self._language:
-                        if "task" in prop and prop["task"] == self._asr_task:
+                        if "task" in prop and self._asr_task in re.split(r"\s*,\s*", prop["task"]):
                             model_index = index
                             break
                 if model_index is None:
