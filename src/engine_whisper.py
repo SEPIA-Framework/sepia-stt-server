@@ -56,7 +56,7 @@ def get_or_create_model(
     full_model_path = settings.asr_models_folder + model_path
     # Make sure paths exist and check global cache
     if not os.path.exists(full_model_path):
-        raise ModelNotFound("ASR model path seems to be wrong")
+        raise ModelNotFound(f"ASR model path seems to be wrong: {full_model_path}")
     cached_model: WhisperCachedModel = next((model for model in CACHED_MODELS
         if model.path == model_path and not model.in_use), None)
     if not cached_model:
@@ -79,6 +79,9 @@ def get_or_create_model(
         # create new one
         compute_device = model_properties.get("compute_device", "cpu")
         compute_type = model_properties.get("compute_type", "int8")
+        cuda_win_path = model_properties.get("cuda_win_path", "")
+        if cuda_win_path:
+            os.add_dll_directory(cuda_win_path)
         new_model = WhisperModel(
             full_model_path,
             device = compute_device,

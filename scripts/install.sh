@@ -34,7 +34,7 @@ install_path="$SCRIPT_FOLDER"
 code_branch="master"
 autoconfirm=0
 virtualenv=0
-setup_type=1	# 1: all, 2: Vosk only
+setup_type=1	# 1: all, 2: Vosk only, 3: Whisper and Vosk
 skip_adapt_scripts=""
 asr_engine="dynamic"
 while getopts yp:s:b:vh? opt; do
@@ -51,6 +51,8 @@ if [ -z "$setup_type" ] || [ "$setup_type" = "1" ]; then
 	asr_engine="dynamic"
 elif [ "$setup_type" = "2" ]; then
 	asr_engine="vosk"
+elif [ "$setup_type" = "3" ]; then
+	asr_engine="whisper_vosk"
 else
 	echo "Unknown setup type ID - ABORT"
 	exit 1
@@ -69,6 +71,9 @@ if [ "$autoconfirm" = "0" ]; then
 	elif [ "$asr_engine" = "vosk" ]; then
 		echo "- Engine: Vosk (only)"
 		echo "- Models: Vosk small (en, de)"
+	elif [ "$asr_engine" = "whisper_vosk" ]; then
+		echo "- Engine: Whisper and Vosk"
+		echo "- Models: Vosk small (en, de), Whisper tiny"
 	fi
 	if [ -z "$skip_adapt_scripts" ]; then
 		echo "- Adapt-LM scripts: download"
@@ -120,15 +125,16 @@ fi
 # Server
 cd server
 pip3 install --upgrade pip
+pip3 install wheel
 pip3 install -r requirements_server.txt
 # Vosk engine
-if [ "$asr_engine" = "dynamic" ] || [ "$asr_engine" = "vosk" ]; then
+if [ "$asr_engine" = "dynamic" ] || [ "$asr_engine" = "vosk" ] || [ "$asr_engine" = "whisper_vosk" ]; then
 	echo ""
 	echo "Installing Vosk requirements ..."
 	pip3 install -r requirements_vosk.txt
 fi
 # Whisper engine
-if [ "$asr_engine" = "dynamic" ] || [ "$asr_engine" = "whisper" ]; then
+if [ "$asr_engine" = "dynamic" ] || [ "$asr_engine" = "whisper" ] || [ "$asr_engine" = "whisper_vosk" ]; then
 	echo ""
 	echo "Installing Whisper requirements ..."
 	pip3 install -r requirements_whisper.txt
@@ -160,7 +166,7 @@ fi
 cd ..
 cd downloads
 # Vosk models
-if [ "$asr_engine" = "dynamic" ] || [ "$asr_engine" = "vosk" ]; then
+if [ "$asr_engine" = "dynamic" ] || [ "$asr_engine" = "vosk" ] || [ "$asr_engine" = "whisper_vosk" ]; then
 	echo ""
 	echo "Downloading Vosk models ..."
 	wget https://github.com/SEPIA-Framework/sepia-stt-server/releases/download/v0.9.5/vosk-model-small-en-us-0.15.zip
@@ -171,7 +177,7 @@ if [ "$asr_engine" = "dynamic" ] || [ "$asr_engine" = "vosk" ]; then
 	unzip vosk-model-spk-0.4.zip && mv vosk-model-spk-0.4 ../models/vosk-model-spk
 fi
 # Whisper models
-if [ "$asr_engine" = "dynamic" ] || [ "$asr_engine" = "whisper" ]; then
+if [ "$asr_engine" = "dynamic" ] || [ "$asr_engine" = "whisper" ] || [ "$asr_engine" = "whisper_vosk" ]; then
 	echo ""
 	echo "Downloading Whisper models ..."
 	wget https://github.com/fquirin/speech-recognition-experiments/releases/download/v1.0.0/whisper-tiny-ct2.zip
@@ -200,7 +206,12 @@ elif [ "$asr_engine" = "whisper" ]; then
 	echo ""
 	echo "Setting default 'server.conf' to: Whisper"
 	mv server/server.conf server/server-dynamic.conf
-	mv server/server-vosk.conf server/server.conf
+	mv server/server-whisper.conf server/server.conf
+elif [ "$asr_engine" = "whisper_vosk" ]; then
+	echo ""
+	echo "Setting default 'server.conf' to: Whisper"
+	mv server/server.conf server/server-dynamic.conf
+	mv server/server-whisper-vosk.conf server/server.conf
 elif [ "$asr_engine" = "coqui" ]; then
 	echo ""
 	echo "Setting default 'server.conf' to: Coqui"

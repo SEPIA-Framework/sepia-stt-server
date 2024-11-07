@@ -49,9 +49,9 @@ class VoskProcessor(EngineInterface):
         spk_model_path = settings.speaker_models_folder + settings.speaker_model_paths[0]
         # Make sure paths exist and load models
         if not os.path.exists(asr_model_path):
-            raise ModelNotFound("ASR model path seems to be wrong")
+            raise ModelNotFound(f"ASR model path seems to be wrong: {asr_model_path}")
         if self._speaker_detection and not os.path.exists(spk_model_path):
-            raise RuntimeError("Speaker model path seems to be wrong")
+            raise RuntimeError(f"Speaker model path seems to be wrong: {spk_model_path}")
         self._model = Model(asr_model_path)
         if self._speaker_detection:
             self._spk_model = SpkModel(spk_model_path)

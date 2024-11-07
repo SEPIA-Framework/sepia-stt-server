@@ -7,9 +7,9 @@ import configparser
 
 # Server constants
 SERVER_NAME = "SEPIA STT Server"
-SERVER_VERSION = "1.1.0"
+SERVER_VERSION = "1.2.0"
 
-# ordered from hight to low prio
+# ordered from high to low prio
 SETTINGS_PATHS = [
     os.path.expanduser("~") + "/.sepia-stt-server.conf",
     "./server.conf"

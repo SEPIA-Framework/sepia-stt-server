@@ -16,7 +16,7 @@ If you are using custom models built for the 2018 version you can easily [conver
 ## Features
 
 * WebSocket server (Python Fast-API) that can **receive audio streams and send transcribed text at the same time**
-* Modular architecture to **support multiple ASR engines** like Vosk (reference implementation), Coqui, Deepspeech, Scribosermo, ...
+* Modular architecture to **support multiple ASR engines** like Vosk (reference implementation), Whisper, Coqui/Deepspeech, Nvidia NeMo ...
 * Optional **post processing** of result (e.g. via [text2num](https://github.com/allo-media/text2num) and custom modules)
 * **Standardized API for all engines** and support for individual engine features (speaker identification, grammar, confidence score, word timestamps, alternative results, etc.)
 * **On-the-fly server and engine configuration** via HTTP REST API and WebSocket 'welcome' event (including custom grammar, if supported by engine and model)
@@ -28,10 +28,12 @@ If you are using custom models built for the 2018 version you can easily [conver
 ## Integrated ASR Engines
 
 - [Vosk](https://github.com/alphacep/vosk-api) - Status: **Ready**. Includes tiny EN and DE models.
-- [Coqui](https://github.com/coqui-ai/STT) - Status: **Ready**. Includes basic English model w/o scorer.
+- [Coqui](https://github.com/coqui-ai/STT) - Status: **Ready**. Includes basic EN model w/o scorer.
+- [Whisper](https://github.com/guillaumekln/faster-whisper) - Status: **Ready**. Includes multilingual tiny model.
+- [Nvidia NeMo](https://github.com/NVIDIA/NeMo) - Status: [evaluation phase](https://github.com/fquirin/speech-recognition-experiments).
+- [Sherpa ncnn](https://github.com/k2-fsa/sherpa-ncnn) - Status: [evaluation phase](https://github.com/fquirin/speech-recognition-experiments).
 - [Scribosermo](https://gitlab.com/Jaco-Assistant/Scribosermo) - Status: [experimenting with setup](https://github.com/fquirin/scribosermo-stt-setup).
-- [Nvidia NeMo](https://github.com/NVIDIA/NeMo) - Status: experimenting with setup.
-- [TensorFlowASR](https://github.com/TensorSpeech/TensorFlowASR) - Status: Help wanted.
+- [TensorFlowASR](https://github.com/TensorSpeech/TensorFlowASR) - Status: Under consideration.
 
 If you want to see additional engines please create a new [issue](https://github.com/SEPIA-Framework/sepia-stt-server/issues). Pull requests are welcome ;-)
 
